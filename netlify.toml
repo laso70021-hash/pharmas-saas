@@ -1,0 +1,7 @@
+# Netlify build settings for the TanStack Start app.
+# Nitro's "netlify" preset (selected in vite.config.ts when building on Netlify)
+# writes static assets to dist/ and the SSR handler to .netlify/functions-internal,
+# which Netlify picks up automatically.
+[build]
+  command = "npm run build"
+  publish = "dist"

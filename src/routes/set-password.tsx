@@ -1,0 +1,13 @@
+import { useEffect,useState } from 'react';
+import { createFileRoute,useNavigate } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
+import { supabase } from '@/lib/supabase-client';
+import { completePasswordSetup } from '@/lib/management.functions';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+export const Route=createFileRoute('/set-password')({head:()=>({meta:[{title:'Accept invitation | Swahivo'},{name:'description',content:'Verify your Swahivo invitation and choose your account password.'},{property:'og:title',content:'Accept invitation | Swahivo'},{property:'og:description',content:'Verify your Swahivo invitation and choose your account password.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:SetPassword});
+function SetPassword(){
+ const save=useServerFn(completePasswordSetup);const navigate=useNavigate();const [ready,setReady]=useState(false);const [password,setPassword]=useState('');const [confirm,setConfirm]=useState('');const [busy,setBusy]=useState(false);
+ useEffect(()=>{void supabase.auth.getUser().then(async({data})=>{if(!data.user)return;const {data:row}=await supabase.from('account_onboarding').select('password_required').eq('user_id',data.user.id).maybeSingle();setReady(row?.password_required===true);});},[]);
+ return <main className="min-h-screen bg-background flex items-center justify-center p-6"><div className="w-full max-w-md space-y-5"><h1 className="text-2xl font-bold">Set your Swahivo password</h1>{!ready?<p className="text-muted-foreground">Open your invitation email to verify your address. If the invitation has expired, ask the sender to resend it.</p>:<form className="space-y-4" onSubmit={async e=>{e.preventDefault();if(password!==confirm){toast.error('Passwords do not match');return;}setBusy(true);try{await save({data:{password}});toast.success('Password saved');await navigate({to:'/account'});}catch(err){toast.error(err instanceof Error?err.message:'Password could not be saved');}finally{setBusy(false);}}}><label className="block">New password<input aria-label="New password" className="mt-1 w-full border border-input rounded-md p-2 bg-background" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} onChange={e=>setPassword(e.target.value)}/></label><label className="block">Confirm password<input aria-label="Confirm password" className="mt-1 w-full border border-input rounded-md p-2 bg-background" type="password" autoComplete="new-password" required value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><Button disabled={busy} type="submit">{busy?'Saving…':'Save password'}</Button></form>}</div></main>;
+}

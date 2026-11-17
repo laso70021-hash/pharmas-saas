@@ -1,0 +1,146 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794294600948,
+      "tag": "0000_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794294970447,
+      "tag": "0001_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794295714643,
+      "tag": "0002_admin_email_allowlist",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794298403646,
+      "tag": "0003_registration_and_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794298422716,
+      "tag": "0004_registration_guard_bypass",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794299797189,
+      "tag": "0005_owner_workspace_staff_branches_readonly",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794299813858,
+      "tag": "0006_product_images_read_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794323964437,
+      "tag": "0007_wholesale_marketplace",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794324268447,
+      "tag": "0008_pos_create_sale",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794324507429,
+      "tag": "0009_prescription_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794324751354,
+      "tag": "0010_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794325847046,
+      "tag": "0011_exact_yearly_prices_trial_all_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794329257829,
+      "tag": "0012_admin_set_user_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794332233925,
+      "tag": "0013_real_world_entry_imports",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794332297852,
+      "tag": "0014_entry_branch_scope_and_staff_join",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794332622539,
+      "tag": "0015_finish_branch_scope_and_wholesale_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794332665311,
+      "tag": "0016_admin_business_registration_and_staff_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794332915110,
+      "tag": "0017_repair_polymorphic_entry_validation",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794332983355,
+      "tag": "0018_scope_related_sales_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794333099485,
+      "tag": "0019_align_import_history_reader_roles",
+      "breakpoints": true
+    }
+  ]
+}

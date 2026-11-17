@@ -1,0 +1,4 @@
+- Server AI calls use the single OpenRouter-only provider; failures stay failures to avoid silent provider changes.
+- Business logos are optimized client-side, validated by an owner/admin server function, and stored privately; pending/expired owners can change branding without gaining operational write access.
+- Signup logo previews remain in same-origin session storage until confirmation; another-device sign-in can upload from account/settings.
+- Live recommendation numbers come from paginated inventory; AI may prioritize only supplied alert keys.

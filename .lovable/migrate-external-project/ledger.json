@@ -1,0 +1,103 @@
+{
+  "source": "github:laso70021-hash/Phamarcy-starter (Next.js 15, Google AI Studio applet)",
+  "capabilities": [
+    {
+      "capability": "code: public landing page",
+      "source": "components/landing/LandingPage.tsx",
+      "outcome": "migrate to / route",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "code: admin dashboard (18 sections)",
+      "source": "components/dashboard/AdminDashboard.tsx",
+      "outcome": "migrate to /admin behind sign-in + super admin role",
+      "status": "pending",
+      "next_action": "verify once the owner account signs in"
+    },
+    {
+      "capability": "code: data service layer",
+      "source": "lib/pharmacy-service.ts",
+      "outcome": "migrate to Lovable Cloud client",
+      "status": "pending",
+      "next_action": "verify reads/writes once the owner account signs in"
+    },
+    {
+      "capability": "schema",
+      "source": "supabase/migrations/20261109000000_swahivo_schema.sql + supabase/01_required_migrations.sql",
+      "outcome": "migrate (merged, roles moved to user_roles, anon full-access policy removed)",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "config seed records (plans, AI features, health checks, platform settings)",
+      "source": "schema migration seeds",
+      "outcome": "migrate in migration",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "application records",
+      "source": "old database (no export attached)",
+      "outcome": "migrate",
+      "status": "pending",
+      "next_action": "user to export CSV/JSON per table from old database"
+    },
+    {
+      "capability": "synthetic test data",
+      "source": "supabase/02_synthetic_test_data.sql",
+      "outcome": "not imported (marked as test data by source)",
+      "status": "accepted",
+      "next_action": "none unless user asks"
+    },
+    {
+      "capability": "auth identities",
+      "source": "old database auth users (no export)",
+      "outcome": "migrate to Lovable Cloud auth; first-login verification + new password",
+      "status": "pending",
+      "next_action": "user to export users (email, original id)"
+    },
+    {
+      "capability": "authorization",
+      "source": "hardcoded SUPER_ADMIN_UUID + profiles.is_super_admin + anon full access",
+      "outcome": "replace with user_roles + has_role; first account to sign up becomes super admin",
+      "status": "pending",
+      "next_action": "RLS checked for visitors; admin path awaits first sign-in"
+    },
+    {
+      "capability": "AI assistant",
+      "source": "app/api/ai-assistant/route.ts (Gemini direct, GEMINI_API_KEY injected by AI Studio)",
+      "outcome": "server function on Lovable AI (Gemini family), admin-only",
+      "status": "pending",
+      "next_action": "test from dashboard once signed in"
+    },
+    {
+      "capability": "images",
+      "source": "public/assets/aistudio/*.png",
+      "outcome": "migrate as CDN assets",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "public endpoints / webhooks / schedules",
+      "source": "none besides /api/ai-assistant",
+      "outcome": "none to preserve",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "secrets",
+      "source": ".env.example",
+      "outcome": "no user secrets needed (old database keys and AI Studio key replaced)",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "verification",
+      "source": "-",
+      "outcome": "build + browser checks",
+      "status": "pending",
+      "next_action": "run after build"
+    }
+  ]
+}

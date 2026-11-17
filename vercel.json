@@ -1,0 +1,10 @@
+{
+  "framework": null,
+  "buildCommand": "npm run build",
+  "crons": [
+    {
+      "path": "/api/public/ai-reports",
+      "schedule": "17 5 * * *"
+    }
+  ]
+}

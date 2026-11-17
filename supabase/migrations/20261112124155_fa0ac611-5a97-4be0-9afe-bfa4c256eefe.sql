@@ -1,0 +1,1 @@
+CREATE POLICY report_lock_browser_denied ON public.ai_report_lock FOR ALL TO authenticated USING (false) WITH CHECK (false);

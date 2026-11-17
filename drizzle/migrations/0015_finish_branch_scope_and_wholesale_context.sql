@@ -1,0 +1,21 @@
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.review_wholesale_order(uuid,text,text)'::regprocedure) INTO definition; definition:=replace(definition,'BEGIN','BEGIN'||chr(10)||'  PERFORM set_config(''app.wholesale_transfer'',''on'',true);'); EXECUTE definition; END $$;
+DROP TRIGGER wholesale_transfer_context ON public.wholesale_orders;
+DROP POLICY "Sales read" ON public.sales;
+DROP POLICY "Sales write" ON public.sales;
+CREATE POLICY "Sales read" ON public.sales FOR SELECT TO authenticated USING(public.can_access_branch(pharmacy_id,branch_id));
+CREATE POLICY "Sales write" ON public.sales FOR ALL TO authenticated USING(public.can_write_pharmacy(pharmacy_id,ARRAY['manager','pharmacist','cashier']::user_role[]) AND public.can_access_branch(pharmacy_id,branch_id)) WITH CHECK(public.can_write_pharmacy(pharmacy_id,ARRAY['manager','pharmacist','cashier']::user_role[]) AND public.can_access_branch(pharmacy_id,branch_id));
+DROP POLICY "Members read prescriptions" ON public.prescriptions;
+DROP POLICY "Staff add prescriptions" ON public.prescriptions;
+CREATE POLICY "Members read prescriptions" ON public.prescriptions FOR SELECT TO authenticated USING(public.can_access_branch(pharmacy_id,branch_id));
+CREATE POLICY "Staff add prescriptions" ON public.prescriptions FOR INSERT TO authenticated WITH CHECK(public.can_write_pharmacy(pharmacy_id,ARRAY['manager','pharmacist','cashier']::user_role[]) AND public.can_access_branch(pharmacy_id,branch_id));
+CREATE OR REPLACE FUNCTION public.validate_entry_required_fields() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN
+ IF TG_TABLE_NAME='products' AND (NEW.selling_price IS NULL OR NEW.name IS NULL) THEN RAISE EXCEPTION 'Product name and selling price are required'; END IF;
+ IF TG_TABLE_NAME='categories' AND EXISTS(SELECT 1 FROM categories WHERE pharmacy_id=NEW.pharmacy_id AND (lower(slug)=lower(NEW.slug) OR lower(name)=lower(NEW.name)) AND id<>NEW.id) THEN RAISE EXCEPTION 'Duplicate category name or code'; END IF;
+ IF TG_TABLE_NAME='pharmacy_invites' AND EXISTS(SELECT 1 FROM pharmacy_memberships m JOIN profiles p ON p.id=m.user_id WHERE m.pharmacy_id=NEW.pharmacy_id AND lower(p.email)=lower(NEW.email) AND m.is_active) THEN RAISE EXCEPTION 'Staff member already belongs to this business'; END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER categories_required_entry BEFORE INSERT OR UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.validate_entry_required_fields();
+CREATE TRIGGER products_required_entry BEFORE INSERT OR UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.validate_entry_required_fields();
+CREATE TRIGGER invites_required_entry BEFORE INSERT ON public.pharmacy_invites FOR EACH ROW EXECUTE FUNCTION public.validate_entry_required_fields();
+DROP POLICY "Category read" ON public.categories;
+CREATE POLICY "Category read" ON public.categories FOR SELECT TO authenticated USING(public.is_platform_admin() OR public.user_belongs_to_pharmacy(pharmacy_id));

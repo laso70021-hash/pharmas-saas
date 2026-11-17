@@ -1,0 +1,2 @@
+DROP POLICY import_history_read ON public.import_history;
+CREATE POLICY import_history_read ON public.import_history FOR SELECT TO authenticated USING(public.is_platform_admin() OR public.is_pharmacy_owner(pharmacy_id) OR public.has_pharmacy_role(pharmacy_id,ARRAY['manager','inventory_manager','pharmacist']::public.user_role[]));
