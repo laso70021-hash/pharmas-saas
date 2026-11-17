@@ -10,13 +10,16 @@ import { PharmacyService, WorkspaceService } from "@/lib/pharmacy-service";
 import { saveBusinessLogo } from '@/lib/branding.functions';
 import { landingWorkspace } from "@/lib/workspace";
 
+const PENDING_LOGO_KEY = 'afyadawa-registration-logo';
+const LEGACY_PENDING_LOGO_KEY = 'swahivo-registration-logo';
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign In | Swahivo" },
-      { name: "description", content: "Sign in or create your Swahivo account." },
-      { property: "og:title", content: "Sign In | Swahivo" },
-      { property: "og:description", content: "Sign in or create your Swahivo account." },
+      { title: "Sign In | Afyadawa" },
+      { name: "description", content: "Sign in or create your Afyadawa account." },
+      { property: "og:title", content: "Sign In | Afyadawa" },
+      { property: "og:description", content: "Sign in or create your Afyadawa account." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -68,13 +71,13 @@ export function AuthPage() {
     if (!isLoading && user) {
       void supabase.from('account_onboarding').select('password_required').eq('user_id',user.id).maybeSingle().then(async ({data,error})=>{
         if(error){toast.error('Could not check account setup. Please try again.');return;}
-        const pendingLogo = sessionStorage.getItem('swahivo-registration-logo');
+        const pendingLogo = sessionStorage.getItem(PENDING_LOGO_KEY) ?? sessionStorage.getItem(LEGACY_PENDING_LOGO_KEY);
         if (pendingLogo) {
           try {
             const pending = JSON.parse(pendingLogo) as { email: string; data: string };
             if (pending.email.toLowerCase() === user.email?.toLowerCase()) {
               const business = await PharmacyService.getMyBusiness(user.id);
-              if (business) { await saveBusinessLogo({ data: { pharmacyId: business.id, data: pending.data } }); sessionStorage.removeItem('swahivo-registration-logo'); }
+              if (business) { await saveBusinessLogo({ data: { pharmacyId: business.id, data: pending.data } }); sessionStorage.removeItem(PENDING_LOGO_KEY); sessionStorage.removeItem(LEGACY_PENDING_LOGO_KEY); }
             }
           } catch { toast.error('Your logo could not be saved. Upload it from business settings.'); }
         }
@@ -92,8 +95,8 @@ export function AuthPage() {
     setBusy(true);
     setNotice(null);
     try {
-      if (logo) sessionStorage.setItem('swahivo-registration-logo', JSON.stringify({ email: account.email, data: logo }));
-      else sessionStorage.removeItem('swahivo-registration-logo');
+      if (logo) sessionStorage.setItem(PENDING_LOGO_KEY, JSON.stringify({ email: account.email, data: logo }));
+      else { sessionStorage.removeItem(PENDING_LOGO_KEY); sessionStorage.removeItem(LEGACY_PENDING_LOGO_KEY); }
       const { data, error } = await supabase.auth.signUp({
         email: account.email,
         password: account.password,
@@ -160,7 +163,7 @@ export function AuthPage() {
     }
   };
 
-  const heading = mode === "signin" ? "Sign In to Swahivo" : mode === "signup" ? "Register your business" : mode === "staff" ? "Join your pharmacy team" : "Reset your password";
+  const heading = mode === "signin" ? "Sign In to Afyadawa" : mode === "signup" ? "Register your business" : mode === "staff" ? "Join your pharmacy team" : "Reset your password";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/60 via-white to-slate-50 flex items-center justify-center p-4 font-sans">
@@ -235,7 +238,7 @@ export function AuthPage() {
         <div className="text-center text-xs text-slate-500">
           {mode === "signin" ? (
             <>
-              New to Swahivo?{" "}
+              New to Afyadawa?{" "}
               <button onClick={() => setMode("signup")} className="text-blue-600 font-semibold hover:underline">Register your pharmacy or supplier business</button>
             </>
           ) : mode === "signup" || mode === "staff" ? (

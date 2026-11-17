@@ -45,13 +45,13 @@ export function validateEntries(module: EntryModule, rows: EntryRow[], existing:
  if(rows.length>5000)errors.push({row:0,column:'file',reason:'Import no more than 5000 rows at a time'});
  return errors;
 }
-/** Swahivo system barcode: EAN-13 with Swahivo prefix 2 (in-store range) + valid check digit. */
-export function swahivoBarcode(random: () => number = Math.random): string {
+/** Afyadawa system barcode: EAN-13 with prefix 2 (in-store range) + valid check digit. */
+export function afyadawaBarcode(random: () => number = Math.random): string {
  const body='29'+Array.from({length:10},()=>Math.floor(random()*10)).join('');
  const sum=body.split('').reduce((a,d,i)=>a+Number(d)*(i%2?3:1),0);
  return body+((10-(sum%10))%10);
 }
 export function fillBarcodes(rows: EntryRow[], random?: () => number): EntryRow[] {
  const used=new Set(rows.map(r=>(r['barcode']??'').trim()).filter(Boolean));
- return rows.map(r=>{if((r['barcode']??'').trim())return r;let code=swahivoBarcode(random);while(used.has(code))code=swahivoBarcode(random);used.add(code);return {...r,barcode:code};});
+ return rows.map(r=>{if((r['barcode']??'').trim())return r;let code=afyadawaBarcode(random);while(used.has(code))code=afyadawaBarcode(random);used.add(code);return {...r,barcode:code};});
 }

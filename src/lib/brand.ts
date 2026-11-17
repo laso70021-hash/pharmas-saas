@@ -2,9 +2,9 @@ import logo from '@/assets/brand/afyadawa_logo.png';
 import dashboardLogo from '@/assets/brand/afyadawa_dashboard_logo.png';
 import mark from '@/assets/brand/afyadawa_mark.png';
 
-/** Swahivo brand + public contact details — one source for the site, emails and receipts. */
+/** Afyadawa brand + public contact details — one source for the site, emails and receipts. */
 export const BRAND = {
-  name: 'Swahivo',
+  name: 'Afyadawa',
   logoUrl: logo,
   dashboardLogoUrl: dashboardLogo,
   markUrl: mark,

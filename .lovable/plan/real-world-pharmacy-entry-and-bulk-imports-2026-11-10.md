@@ -1,7 +1,7 @@
 # Real-world pharmacy entry and bulk imports
 
 ## Goal
-Extend the existing Swahivo screens without rebuilding them. Make manual entry and spreadsheet imports use the same business fields, validation and relationships, then configure and test one complete demo pharmacy through those workflows.
+Extend the existing Afyadawa screens without rebuilding them. Make manual entry and spreadsheet imports use the same business fields, validation and relationships, then configure and test one complete demo pharmacy through those workflows.
 
 ## Current findings
 - The connected database already contains **34 public tables**, all with row-level security enabled. They do not need to be re-imported or replaced.
@@ -62,7 +62,7 @@ Some schema additions must be applied before the associated screens can work; th
 - Test desktop and mobile layouts and review current error logs. Report any account-confirmation or email-domain blocker explicitly rather than calling it complete.
 
 ## Technical details
-- Keep TanStack routes, the existing Swahivo visual style and data mapping in the service layer.
+- Keep TanStack routes, the existing Afyadawa visual style and data mapping in the service layer.
 - Use a shared typed field registry and validation model for manual forms, templates and import mapping; use an established spreadsheet parser loaded only when needed.
 - Add schema changes through the managed migration tool; preserve existing tables and use additive fields/tables. Grant appropriate access and enable RLS on new tables.
 - Use authenticated, transactional database functions for imports and stock mutations, validating permissions and tenant relationships on the database side.

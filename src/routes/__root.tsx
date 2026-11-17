@@ -80,10 +80,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Swahivo" },
+      { title: "Afyadawa" },
       { name: "description", content: "AI-powered pharmacy management for pharmacies, chains and suppliers." },
-      { name: "author", content: "Swahivo" },
-      { property: "og:title", content: "Swahivo" },
+      { name: "author", content: "Afyadawa" },
+      { property: "og:title", content: "Afyadawa" },
       { property: "og:description", content: "AI-powered pharmacy management for pharmacies, chains and suppliers." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

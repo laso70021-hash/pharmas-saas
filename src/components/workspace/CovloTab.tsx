@@ -38,7 +38,7 @@ export function CovloTab({ ws, userId }: { ws: Workspace; userId: string }) {
 
   const send = async (text: string) => {
     const att = file;
-    const t = text.trim() || (att ? 'Please read this file and tell me what it contains and what I should do in Swahivo.' : ''); if (!t || busy) return;
+    const t = text.trim() || (att ? 'Please read this file and tell me what it contains and what I should do in Afyadawa.' : ''); if (!t || busy) return;
     setBusy(true); setPending({ role: 'user', content: att ? `${t}\n📎 ${att.name}` : t }); setDraft(''); setFile(null);
     try {
       const r = await askCovlo({ data: { pharmacyId: ws.id, threadId: active, message: t, ...(att ? { attachment: att } : {}) } });
@@ -73,7 +73,7 @@ export function CovloTab({ ws, userId }: { ws: Workspace; userId: string }) {
       <section className={`${cardCls} flex flex-col overflow-hidden`}>
         <header className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-200">
           <img src={covloIcon} alt="Covlo" className="w-9 h-9 rounded-full object-cover" />
-          <div><div className="font-black text-slate-900">Covlo</div><div className="text-[11px] text-slate-500">Say "Kovlo" · your Swahivo assistant for {ws.name}</div></div>
+          <div><div className="font-black text-slate-900">Covlo</div><div className="text-[11px] text-slate-500">Say "Kovlo" · your Afyadawa assistant for {ws.name}</div></div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {shown.length === 0 && (

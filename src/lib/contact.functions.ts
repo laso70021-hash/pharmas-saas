@@ -10,7 +10,7 @@ const schema = z.object({
 });
 
 const OWNER = "hello@swahivo.com";
-const FROM = "Swahivo <info@swahivo.com>";
+const FROM = "Afyadawa <info@swahivo.com>";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 async function sendResend(key: string, body: Record<string, unknown>) {
@@ -26,7 +26,7 @@ async function sendResend(key: string, body: Record<string, unknown>) {
   }
 }
 
-/** Saves a homepage contact message, emails the Swahivo team and confirms to the sender (Resend). */
+/** Saves a homepage contact message, emails the Afyadawa team and confirms to the sender (Resend). */
 export const submitContact = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => schema.parse(input))
   .handler(async ({ data }) => {
@@ -55,7 +55,7 @@ export const submitContact = createServerFn({ method: "POST" })
     });
     await sendResend(key, {
       from: FROM, to: [data.email], reply_to: OWNER,
-      subject: "We received your message — Swahivo",
+      subject: "We received your message — Afyadawa",
       html: `<div style="font-family:Arial,sans-serif"><h2 style="color:#1d4ed8">Thank you, ${n}</h2><p>We received your message and our team will contact you soon.</p><p>Call us: 0771 888 881 · 0674 766 586<br/>Email: ${OWNER}</p></div>`,
     });
     return { ok: true };

@@ -32,7 +32,7 @@ export async function processAIReports(now=new Date()){
     try{
      const text=await buildReportText(pref.pharmacy_id,business,pref,period,now);
      const {error:saveError}=await sb.from('ai_report_runs').update({summary:text,status:'generated'}).eq('id',run.id);if(saveError)throw saveError;
-     await sendAppEmail(auth.user.email,`${pref.frequency} report — ${business.name} | Swahivo`,text,`ai-report:${run.id}`);
+     await sendAppEmail(auth.user.email,`${pref.frequency} report — ${business.name} | Afyadawa`,text,`ai-report:${run.id}`);
      const {error:sentError}=await sb.from('ai_report_runs').update({status:'sent'}).eq('id',run.id);if(sentError)throw sentError;
     }catch(err){
      const reason=err instanceof GatewayError?`AI unavailable (${err.httpStatus??err.code}); owner review required.`:err instanceof Error?err.message:'Report failed; owner review required.';

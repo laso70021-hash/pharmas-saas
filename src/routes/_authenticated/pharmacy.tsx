@@ -10,9 +10,9 @@ import { useState } from 'react';
 export const Route = createFileRoute("/_authenticated/pharmacy")({
   head: () => ({
     meta: [
-      { title: "Pharmacy Dashboard | Swahivo" },
+      { title: "Pharmacy Dashboard | Afyadawa" },
       { name: "description", content: "Run your pharmacy: branches, staff roles, stock with photos, expenses and profit." },
-      { property: "og:title", content: "Pharmacy Dashboard | Swahivo" },
+      { property: "og:title", content: "Pharmacy Dashboard | Afyadawa" },
       { property: "og:description", content: "Branches, staff, inventory and profit for your pharmacy." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

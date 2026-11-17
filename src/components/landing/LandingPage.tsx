@@ -3,16 +3,16 @@ import React, { useState } from 'react';
 import ContactSection from './ContactSection';
 import { MobileNavigation } from '@/components/common/MobileNavigation';
 import { Button } from '@/components/ui/button';
-import phamacyownerImg from '@/assets/swahivo/phamacy_owner.webp';
-import pharmacistImg from '@/assets/swahivo/pharmacist.webp';
-import cashierImg from '@/assets/swahivo/cashier.webp';
-import managerImg from '@/assets/swahivo/manager.webp';
-import accountantImg from '@/assets/swahivo/accountant.webp';
-import supplierImg from '@/assets/swahivo/supplier.webp';
-import deliveryriderImg from '@/assets/swahivo/delivery_rider.webp';
-import herosectionphotoImg from '@/assets/swahivo/hero_section_photo.webp';
-import aboutsectionImg from '@/assets/swahivo/about_section.webp';
-import laptopdashboardImg from '@/assets/swahivo/laptop_dashboard.webp';
+import phamacyownerImg from '@/assets/afyadawa/phamacy_owner.webp';
+import pharmacistImg from '@/assets/afyadawa/pharmacist.webp';
+import cashierImg from '@/assets/afyadawa/cashier.webp';
+import managerImg from '@/assets/afyadawa/manager.webp';
+import accountantImg from '@/assets/afyadawa/accountant.webp';
+import supplierImg from '@/assets/afyadawa/supplier.webp';
+import deliveryriderImg from '@/assets/afyadawa/delivery_rider.webp';
+import herosectionphotoImg from '@/assets/afyadawa/hero_section_photo.webp';
+import aboutsectionImg from '@/assets/afyadawa/pharmacy_facade.png';
+import laptopdashboardImg from '@/assets/afyadawa/dispenser_laptop.png';
 import {
   Sparkles,
   CheckCircle2,
@@ -184,7 +184,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3 shrink-0">
-            <MobileNavigation title="Swahivo navigation">
+            <MobileNavigation title="Afyadawa navigation">
               <nav className="flex flex-col gap-1 p-5 text-sm font-semibold">
                 <img src={BRAND.logoUrl} alt="Afyadawa" className="w-44 h-auto mb-5" />
                 {[['home', 'Home'], ['features', 'Features'], ['about', 'Solutions'], ['pricing', 'Pricing'], ['ecosystem', 'Resources'], ['contact', 'Contact']].map(([id, label]) => (
@@ -218,7 +218,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
         <div className="absolute inset-y-0 right-0 w-[58%] hidden xl:block">
           <img
             src={herosectionphotoImg}
-            alt="Swahivo Pharmacist"
+            alt="Pharmacy professional"
             className="absolute inset-0 w-full h-full object-cover object-top"
             referrerPolicy="no-referrer"
           />
@@ -279,7 +279,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
 
             {/* Right: photo is the section background; AI card floats top-right */}
             <div className="md:col-span-6 relative min-w-0 xl:min-h-[420px]">
-              <img src={herosectionphotoImg} alt="Swahivo Pharmacist" className="xl:hidden w-full rounded-3xl object-cover object-top aspect-[4/5]" referrerPolicy="no-referrer" />
+              <img src={herosectionphotoImg} alt="Pharmacy professional" className="xl:hidden w-full rounded-3xl object-cover object-top aspect-[4/5]" referrerPolicy="no-referrer" />
               <div>
                 {/* Floating AI Assistant Card */}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md p-5 rounded-3xl shadow-xl border border-white w-[270px] max-w-[calc(100%-2rem)] z-10 animate-fade-in">
@@ -378,7 +378,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
               <div className="relative rounded-3xl overflow-hidden shadow-xl border-4 border-white aspect-[4/3]">
                 <img
                   src={aboutsectionImg}
-                  alt="Modern Swahivo Pharmacy"
+                  alt="Modern Afyadawa pharmacy"
                   className="absolute inset-0 w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -389,7 +389,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
             <div className="lg:col-span-6 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                 <Building2 className="w-3.5 h-3.5" />
-                <span>About Swahivo</span>
+                <span>About Afyadawa</span>
               </div>
 
               <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
@@ -549,9 +549,9 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
               <div className="relative mx-auto rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-700/60 bg-slate-800">
                 <img
                   src={laptopdashboardImg}
-                  alt="Swahivo Dashboard in Laptop"
-                  width={900}
-                  height={560}
+                  alt="Afyadawa dispenser dashboard on a laptop"
+                  width={1024}
+                  height={768}
                   className="w-full h-auto object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -753,7 +753,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
                 Ready to Transform Your Pharmacy?
               </h2>
               <p className="text-blue-100 text-sm max-w-xl">
-                Join hundreds of pharmacies using Swahivo to save time, reduce loss and
+                Join hundreds of pharmacies using Afyadawa to save time, reduce loss and
                 grow their business.
               </p>
             </div>
@@ -829,7 +829,7 @@ export default function LandingPage({ onOpenDashboard, onChoosePlan, onSignIn, i
           </div>
 
           <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
-            <div>© 2026 Swahivo. All rights reserved.</div>
+            <div>© 2026 Afyadawa. All rights reserved.</div>
             <div className="flex items-center gap-6">
               <a href="#privacy" className="hover:text-white">Privacy Policy</a>
               <a href="#terms" className="hover:text-white">Terms of Service</a>

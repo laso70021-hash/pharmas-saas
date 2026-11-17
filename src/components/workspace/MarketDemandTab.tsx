@@ -13,7 +13,7 @@ export function MarketDemandTab({ ws }: { ws: Workspace }) {
   const rows = data.map((r) => ({ ...r, ...demandPlan(r) }));
   return (
     <div className="space-y-4">
-      <SectionHeader title="Market Demand" subtitle="What pharmacies on Swahivo are selling, and Covlo's suggested next batch for you. Totals only; no pharmacy is named." />
+      <SectionHeader title="Market Demand" subtitle="What pharmacies on Afyadawa are selling, and Covlo's suggested next batch for you. Totals only; no pharmacy is named." />
       <div className={`${cardCls} overflow-x-auto`}>
         {isLoading ? <Empty>Loading demand…</Empty> : error ? <Empty>Could not load market demand.</Empty> : rows.length === 0 ? <Empty>Not enough sales on the platform yet. A medicine shows here once at least two pharmacies sell it.</Empty> : (
           <table className="w-full text-sm">

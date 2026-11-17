@@ -176,7 +176,7 @@ function DocView({ ws, doc, onClose }: { ws: Workspace; doc: BizDoc; onClose: ()
             {doc.notes && <div>{doc.notes}</div>}
             {doc.doc_type === 'proforma' && <div className="text-xs italic">This is a quotation, not a tax invoice. Prices are valid for 14 days.</div>}
             {doc.doc_type === 'delivery_note' && <div className="grid grid-cols-2 gap-8 pt-8"><div className="border-t border-slate-400 pt-1">Delivered by</div><div className="border-t border-slate-400 pt-1">Received by (name, signature, date)</div></div>}
-            <div className="text-center text-[10px] text-slate-500 pt-2">Thank you · Powered by Swahivo</div>
+            <div className="text-center text-[10px] text-slate-500 pt-2">Thank you · Powered by Afyadawa</div>
           </div>)}
       </div>
       {hist.length > 0 && <div className="mt-4 text-[11px] text-slate-500">History: {hist.map((h) => `${h.action.replace('status:', '→ ')} (${day(h.created_at)})`).join(' · ')}</div>}

@@ -1,7 +1,7 @@
 # Record management, invitations and AI email reports
 
 ## 1. Edit and delete controls
-- Add consistent Edit and Delete actions to supplier, customer, user and business lists without changing the existing Swahivo appearance.
+- Add consistent Edit and Delete actions to supplier, customer, user and business lists without changing the existing Afyadawa appearance.
 - Show a confirmation dialog before deletion. Explain when sales, orders or other linked records prevent permanent deletion; offer deactivation where appropriate rather than silently erasing history.
 - Administrators manage users and businesses; workspace permissions continue to govern customer and supplier changes.
 - Protect the current administrator from self-deletion and prevent removal of the last platform administrator. Record sensitive changes in the audit trail.

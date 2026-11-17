@@ -45,7 +45,7 @@ export async function generateResponse(req: AIRequest): Promise<AIResult> {
     let origin: string | undefined;
     try { const h = getRequestHeader('origin'); if (h && /^https?:\/\//.test(h)) origin = new URL(h).origin; } catch { /* Offline provider tests have no incoming request. */ }
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-Title': 'Swahivo', ...(origin ? { 'HTTP-Referer': origin } : {}) },
+      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-Title': 'Afyadawa', ...(origin ? { 'HTTP-Referer': origin } : {}) },
       body: JSON.stringify({ model: OPENROUTER_MODEL, messages, ...(f ? { response_format: f.type === 'json_object' ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: f.name, strict: f.strict ?? true, schema: f.schema } } } : {}) }),
     });
     if (!res.ok) throw new GatewayError(res.status === 402 ? 'payment_required' : res.status === 429 ? 'rate_limit' : 'request_failed', res.status);

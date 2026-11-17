@@ -33,7 +33,7 @@ export function VisitorChat() {
             <button aria-label="Close chat" onClick={() => setOpen(false)}><X className="w-5 h-5" /></button>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-50">
-            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700">Habari! 👋 I can answer questions about Swahivo — plans, the free trial, features for pharmacies and suppliers.</div>
+            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700">Habari! 👋 I can answer questions about Afyadawa — plans, the free trial, features for pharmacies and suppliers.</div>
             {msgs.length === 0 && <div className="flex flex-wrap gap-1.5">{STARTERS.map((s) => <button key={s} onClick={() => void send(s)} className="text-xs font-semibold px-2.5 py-1.5 rounded-full border border-blue-200 text-blue-700 bg-white hover:bg-blue-50">{s}</button>)}</div>}
             {msgs.map((m, i) => <div key={i} className={m.role === 'user' ? 'flex justify-end' : ''}><div className={m.role === 'user' ? 'max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600 text-white px-3 py-2 text-sm whitespace-pre-wrap' : 'max-w-[85%] rounded-2xl rounded-tl-sm bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap'}>{m.content}</div></div>)}
             {busy && <div className="text-xs text-slate-400 animate-pulse">Typing…</div>}

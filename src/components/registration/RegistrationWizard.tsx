@@ -362,7 +362,7 @@ export function RegistrationWizard({ mode, initialPlan, defaultName, busy, onSub
 
           <p className="text-[11px] text-slate-500 flex gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            Your registration goes to the Swahivo team for approval. You&apos;ll see the status on your account page.
+            Your registration goes to the Afyadawa team for approval. You&apos;ll see the status on your account page.
           </p>
 
           <div className="flex gap-2">

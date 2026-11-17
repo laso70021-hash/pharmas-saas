@@ -7,10 +7,10 @@ import { useAuth } from "@/hooks/useAuth";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Dashboard | Swahivo" },
-      { name: "description", content: "Platform administration for Swahivo: pharmacies, stock, sales and AI insights." },
-      { property: "og:title", content: "Admin Dashboard | Swahivo" },
-      { property: "og:description", content: "Platform administration for Swahivo." },
+      { title: "Admin Dashboard | Afyadawa" },
+      { name: "description", content: "Platform administration for Afyadawa: pharmacies, stock, sales and AI insights." },
+      { property: "og:title", content: "Admin Dashboard | Afyadawa" },
+      { property: "og:description", content: "Platform administration for Afyadawa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },

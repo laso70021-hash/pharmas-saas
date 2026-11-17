@@ -6,7 +6,7 @@ import LandingPage from "@/components/landing/LandingPage";
 import { PharmacyService } from "@/lib/pharmacy-service";
 import { useAuth } from "@/hooks/useAuth";
 
-const title = "Swahivo - Run Your Pharmacy Smarter with AI";
+const title = "Afyadawa - Run Your Pharmacy Smarter with AI";
 const description =
   "A complete pharmacy management system for pharmacies, chains and suppliers. Manage stock, sales, prescriptions, expiry, orders and deliveries in one connected workspace.";
 

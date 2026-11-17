@@ -28,10 +28,10 @@ describe('real-world entry validation',()=>{
  it('requires positive opening stock',()=>{expect(validateEntries('batches',[{product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'0',cost_per_unit:'50',expiry_date:'2028-01-01'}])).toEqual(expect.arrayContaining([expect.objectContaining({column:'quantity',reason:'Opening stock quantity must be greater than zero'})]));});
  it('detects duplicate product batches in the same branch',()=>{const batch={product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'2',cost_per_unit:'50',expiry_date:'2028-01-01'};expect(validateEntries('batches',[batch,{...batch}])).toEqual(expect.arrayContaining([expect.objectContaining({row:3,reason:'Duplicate record'})]));});
 });
-import { swahivoBarcode, fillBarcodes } from '@/lib/entry-model';
-describe('Swahivo barcodes', () => {
+import { afyadawaBarcode, fillBarcodes } from '@/lib/entry-model';
+describe('Afyadawa barcodes', () => {
  it('generates a valid 13-digit EAN starting with 29', () => {
-  const code = swahivoBarcode(() => 0);
+  const code = afyadawaBarcode(() => 0);
   expect(code).toBe('2900000000001');
  });
  it('fills only empty barcodes', () => {

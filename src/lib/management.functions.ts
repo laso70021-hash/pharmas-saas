@@ -58,7 +58,7 @@ export const sendRecordEmail=createServerFn({method:'POST'}).middleware([require
  const email=z.string().email().parse(record.email?.trim().toLowerCase());
  const {sendAppEmail}=await import('./resend.server');
  const origin=process.env['APP_ORIGIN']||'https://swahivo.com';
- if(!data.invite&&data.kind!=='pharmacy_invites')return sendAppEmail(email,'Your details were added — Swahivo','Your contact details have been added to Swahivo. If you did not expect this, contact info@swahivo.com.',`record-confirm:${data.kind}:${data.id}`);
+ if(!data.invite&&data.kind!=='pharmacy_invites')return sendAppEmail(email,'Your details were added — Afyadawa','Your contact details have been added to Afyadawa. If you did not expect this, contact info@swahivo.com.',`record-confirm:${data.kind}:${data.id}`);
  if(data.kind==='pharmacy_invites'&&'status' in record&&record.status!=='pending')throw new Error('This invitation is no longer pending.');
  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
  // generateLink prepares a verification link; only clicking the email confirms ownership.
@@ -67,13 +67,13 @@ export const sendRecordEmail=createServerFn({method:'POST'}).middleware([require
   if(!['email_exists','user_already_exists'].includes(generated.error.code??''))throw new Error('Could not generate the account invitation.');
   const {data:profile}=await supabaseAdmin.from('profiles').select('id').eq('email',email).maybeSingle();
   if(profile){const {data:onboarding}=await supabaseAdmin.from('account_onboarding').select('password_required').eq('user_id',profile.id).maybeSingle();
-   if(onboarding?.password_required){const recovery=await supabaseAdmin.auth.admin.generateLink({type:'recovery',email,options:{redirectTo:`${origin}/set-password`}});if(recovery.error)throw new Error('Could not regenerate the invitation.');return sendAppEmail(email,'Set your password — Swahivo',`Verify your email and set your password: ${recovery.data.properties.action_link}`,`invite-recovery:${data.kind}:${data.id}:${Math.floor(Date.now()/86400000)}`);}
+   if(onboarding?.password_required){const recovery=await supabaseAdmin.auth.admin.generateLink({type:'recovery',email,options:{redirectTo:`${origin}/set-password`}});if(recovery.error)throw new Error('Could not regenerate the invitation.');return sendAppEmail(email,'Set your password — Afyadawa',`Verify your email and set your password: ${recovery.data.properties.action_link}`,`invite-recovery:${data.kind}:${data.id}:${Math.floor(Date.now()/86400000)}`);}
   }
-  return sendAppEmail(email,'You are invited — Swahivo',`Sign in to Swahivo at ${origin}/auth to view your invitations. Your existing password has not changed.`,`existing-invite:${data.kind}:${data.id}`);
+  return sendAppEmail(email,'You are invited — Afyadawa',`Sign in to Afyadawa at ${origin}/auth to view your invitations. Your existing password has not changed.`,`existing-invite:${data.kind}:${data.id}`);
  }
  const invited=generated.data.user;if(!invited||!generated.data.properties.action_link)throw new Error('Could not generate the account invitation.');
  const {error:onboardError}=await supabaseAdmin.from('account_onboarding').upsert({user_id:invited.id,password_required:true});if(onboardError)throw onboardError;
- return sendAppEmail(email,'Confirm your invitation and set your password — Swahivo',`You have been invited to Swahivo. Verify your email and set your password: ${generated.data.properties.action_link}. This invitation does not grant workspace access until the team association is accepted.`,`new-invite:${data.kind}:${data.id}`);
+ return sendAppEmail(email,'Confirm your invitation and set your password — Afyadawa',`You have been invited to Afyadawa. Verify your email and set your password: ${generated.data.properties.action_link}. This invitation does not grant workspace access until the team association is accepted.`,`new-invite:${data.kind}:${data.id}`);
 });
 
 export const completePasswordSetup=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator((v:unknown)=>z.object({password:z.string().min(8).max(128)}).parse(v)).handler(async({data,context})=>{
@@ -133,7 +133,7 @@ export const registerStaffWithTemporaryPassword=createServerFn({method:'POST'}).
  }
  try{
   const {sendAppEmail}=await import('./resend.server');
-  await sendAppEmail(data.staff.email,'Verify your staff account — Swahivo',`A Swahivo staff account has been created for you. Verify your email and choose a new password here: ${actionLink}. Your temporary password was provided separately by your business owner.`,`staff-invite:${inviteId}`);
+  await sendAppEmail(data.staff.email,'Verify your staff account — Afyadawa',`An Afyadawa staff account has been created for you. Verify your email and choose a new password here: ${actionLink}. Your temporary password was provided separately by your business owner.`,`staff-invite:${inviteId}`);
   return {inviteId,emailSent:true};
  }catch(error){
   return {inviteId,emailSent:false,emailError:error instanceof Error?error.message:'Verification email could not be sent.'};

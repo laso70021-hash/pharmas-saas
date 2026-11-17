@@ -24,7 +24,7 @@
     },
     {
       "capability": "schema",
-      "source": "supabase/migrations/20261109000000_swahivo_schema.sql + supabase/01_required_migrations.sql",
+      "source": "schema migration + required SQL migrations",
       "outcome": "migrate (merged, roles moved to user_roles, anon full-access policy removed)",
       "status": "verified",
       "next_action": "none"

@@ -31,6 +31,6 @@ export const sendReportNow=createServerFn({method:'POST'}).middleware([requireSu
  const now=new Date();const period=reportPeriod(data.frequency,now);
  let text:string;
  try{text=await buildReportText(data.pharmacyId,business,data,period,now);}catch(e){if(e instanceof GatewayError){if(e.httpStatus===402)throw new Error('AI credits are unavailable.');if(e.httpStatus===429)throw new Error('AI is busy, try again in a minute.');}throw new Error(e instanceof Error?e.message:'Could not generate the report.');}
- await sendAppEmail(u.user.email,`${data.frequency.slice(0,1).toUpperCase()}${data.frequency.slice(1)} report — ${business.name} | Swahivo`,text,`ai-report-now:${data.pharmacyId}:${context.userId}:${Date.now()}`);
+ await sendAppEmail(u.user.email,`${data.frequency.slice(0,1).toUpperCase()}${data.frequency.slice(1)} report — ${business.name} | Afyadawa`,text,`ai-report-now:${data.pharmacyId}:${context.userId}:${Date.now()}`);
  return {email:u.user.email,period:period.key,summary:text};
 });

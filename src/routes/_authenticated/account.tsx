@@ -19,10 +19,10 @@ import type { BusinessRegistration } from "@/lib/pharmacy-types";
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({
     meta: [
-      { title: "My Account | Swahivo" },
-      { name: "description", content: "Your Swahivo registration, plan, approval status and yearly payments." },
-      { property: "og:title", content: "My Account | Swahivo" },
-      { property: "og:description", content: "Your Swahivo registration, plan, approval status and yearly payments." },
+      { title: "My Account | Afyadawa" },
+      { name: "description", content: "Your Afyadawa registration, plan, approval status and yearly payments." },
+      { property: "og:title", content: "My Account | Afyadawa" },
+      { property: "og:description", content: "Your Afyadawa registration, plan, approval status and yearly payments." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -220,10 +220,10 @@ function BusinessStatus({
       message = `Paid ${business.billing_choice === "monthly" ? "monthly" : "yearly"}${business.subscription_starts_at ? ` from ${formatDateDeterministic(business.subscription_starts_at)}` : ""} until ${formatDateDeterministic(business.subscription_ends_at || "")} (${daysLeft(business.subscription_ends_at)} days left).${daysLeft(business.subscription_ends_at) <= 7 ? " Your service ends soon — send a renewal payment below to extend it." : ""}`;
       break;
     case "expired":
-      message = "Your account has expired. Renew monthly or yearly below to continue using Swahivo.";
+      message = "Your account has expired. Renew monthly or yearly below to continue using Afyadawa.";
       break;
     case "suspended":
-      message = "Your account is suspended. Please contact Swahivo support.";
+      message = "Your account is suspended. Please contact Afyadawa support.";
       break;
     case "rejected":
       message = business.review_note ? `Your registration was not approved: ${business.review_note}` : "Your registration was not approved.";

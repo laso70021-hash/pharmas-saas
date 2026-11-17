@@ -755,7 +755,7 @@ export default function AdminDashboard({ onBackToLanding, plans }: AdminDashboar
               </button>
             </div>
             <p className="text-[11px] text-slate-400 mb-2 truncate font-mono">
-              {profile?.email || user?.email || 'admin@swahivo.com'}
+              {profile?.email || user?.email || 'Platform Admin'}
             </p>
             <button
               onClick={onBackToLanding}
@@ -2214,7 +2214,7 @@ export default function AdminDashboard({ onBackToLanding, plans }: AdminDashboar
                   <h3 className="font-bold text-sm text-slate-900">Brand & Localization</h3>
                   <div>
                     <label className="block text-slate-500 font-bold mb-1">Platform Name</label>
-                    <input type="text" readOnly value="Swahivo" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 font-semibold" />
+                    <input type="text" readOnly value="Afyadawa" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 font-semibold" />
                   </div>
                   <div>
                     <label className="block text-slate-500 font-bold mb-1">Currency</label>
