@@ -57,8 +57,8 @@ export const sendRecordEmail=createServerFn({method:'POST'}).middleware([require
  if(!admin){if(!pid)throw new Error('Permission denied.');const {data:allowed}=await context.supabase.rpc('can_write_pharmacy',{_pharmacy_id:pid,_roles:data.kind==='customers'?['manager','cashier','pharmacist']:['manager','inventory_manager']});if(!allowed)throw new Error('Permission denied.');if(data.kind==='pharmacy_invites'){const {data:owner}=await context.supabase.rpc('is_pharmacy_owner',{_pharmacy_id:pid});if(!owner)throw new Error('Only the business owner can send team invitations.');}}
  const email=z.string().email().parse(record.email?.trim().toLowerCase());
  const {sendAppEmail}=await import('./resend.server');
- const origin=process.env['APP_ORIGIN']||'https://swahivo.com';
- if(!data.invite&&data.kind!=='pharmacy_invites')return sendAppEmail(email,'Your details were added — Afyadawa','Your contact details have been added to Afyadawa. If you did not expect this, contact info@swahivo.com.',`record-confirm:${data.kind}:${data.id}`);
+ const origin=process.env['APP_ORIGIN']||'https://www.afyadawa.co.tz';
+ if(!data.invite&&data.kind!=='pharmacy_invites')return sendAppEmail(email,'Your details were added — Afyadawa','Your contact details have been added to Afyadawa. If you did not expect this, contact info@afyadawa.co.tz.',`record-confirm:${data.kind}:${data.id}`);
  if(data.kind==='pharmacy_invites'&&'status' in record&&record.status!=='pending')throw new Error('This invitation is no longer pending.');
  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
  // generateLink prepares a verification link; only clicking the email confirms ownership.
@@ -101,7 +101,7 @@ export const registerStaffWithTemporaryPassword=createServerFn({method:'POST'}).
  if(ownerError)throw ownerError;
  if(!isOwner)throw new Error('Only this business owner can create staff accounts.');
  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
- const origin=process.env['APP_ORIGIN']||'https://swahivo.com';
+ const origin=process.env['APP_ORIGIN']||'https://www.afyadawa.co.tz';
  let userId:string|null=null;
  let inviteId:string;
  let actionLink:string;

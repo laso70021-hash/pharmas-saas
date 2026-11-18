@@ -20,7 +20,7 @@ export function VisitorChat() {
     try {
       const r = await askVisitorAssistant({ data: { messages: next.slice(-12) } });
       setMsgs([...next, { role: 'assistant', content: r.reply ?? r.error ?? 'Please try again.' }]);
-    } catch { setMsgs([...next, { role: 'assistant', content: 'Our assistant is unavailable right now. Call 0771 888 881 or email info@swahivo.com.' }]); }
+    } catch { setMsgs([...next, { role: 'assistant', content: 'Our assistant is unavailable right now. Call 0771 888 881 or email info@afyadawa.co.tz.' }]); }
     finally { setBusy(false); }
   };
   return (

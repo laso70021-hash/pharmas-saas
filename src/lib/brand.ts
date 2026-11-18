@@ -8,8 +8,8 @@ export const BRAND = {
   logoUrl: logo,
   dashboardLogoUrl: dashboardLogo,
   markUrl: mark,
-  email: 'info@swahivo.com',
-  enterpriseEmail: 'hello@swahivo.com',
+  email: 'info@afyadawa.co.tz',
+  enterpriseEmail: 'hello@afyadawa.co.tz',
   phones: ['0771 888 881', '0674 766 586'],
 } as const;
 

@@ -3,7 +3,7 @@ import { normalizeAfyadawaBrand } from '@/lib/visitor-assistant.functions';
 
 describe('visitor assistant branding', () => {
   it('uses Afyadawa without altering the existing contact email', () => {
-    expect(normalizeAfyadawaBrand('Hello! Karibu Swahivo (soon to be Afyadawa). Contact info@swahivo.com.'))
-      .toBe('Hello! Karibu Afyadawa. Contact info@swahivo.com.');
+    expect(normalizeAfyadawaBrand('Hello! Karibu Swahivo (soon to be Afyadawa). Contact info@afyadawa.co.tz.'))
+      .toBe('Hello! Karibu Afyadawa. Contact info@afyadawa.co.tz.');
   });
 });

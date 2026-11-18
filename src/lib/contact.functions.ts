@@ -9,8 +9,8 @@ const schema = z.object({
   message: z.string().trim().min(1).max(2000),
 });
 
-const OWNER = "hello@swahivo.com";
-const FROM = "Afyadawa <info@swahivo.com>";
+const OWNER = "hello@afyadawa.co.tz";
+const FROM = "Afyadawa <info@afyadawa.co.tz>";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 async function sendResend(key: string, body: Record<string, unknown>) {
