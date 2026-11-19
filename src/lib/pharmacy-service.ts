@@ -1189,6 +1189,21 @@ export class EntryService {
     const {error}=await supabase.storage.from('product-images').upload(path,file,{contentType:file.type});fail(error);
     return path;
   }
+  private static async ensureProductPlaceholder(pid:string):Promise<string> {
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="18" fill="#f1f5f9"/><rect x="28" y="46" width="72" height="36" rx="18" fill="#cbd5e1" transform="rotate(-35 64 64)"/><path d="M58 43 79 73" stroke="#f8fafc" stroke-width="5" transform="rotate(-35 64 64)"/></svg>';
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+    try {
+      const image=new Image();
+      await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error('Could not create the neutral product placeholder'));image.src=url;});
+      const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
+      const context=canvas.getContext('2d');if(!context)throw new Error('Could not create the neutral product placeholder');
+      context.drawImage(image,0,0,128,128);
+      const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not encode the neutral product placeholder')),'image/png'));
+      const path=`${pid}/placeholder.png`;
+      const {error}=await supabase.storage.from('product-images').upload(path,blob,{contentType:'image/png',upsert:true});fail(error);
+      return path;
+    } finally {URL.revokeObjectURL(url);}
+  }
   private static async removeProductPhotos(paths: string[]): Promise<void> {
     if(!paths.length)return;
     const {error}=await supabase.storage.from('product-images').remove(paths);fail(error);
@@ -1230,13 +1245,13 @@ export class EntryService {
     try{
       if(module==='products'){
         const photos=matchProductPhotos(rows,productPhotos);
-        if(photos.errors.length||photos.missing.length)throw new Error([...photos.errors,...(photos.missing.length?[`Missing product images for: ${photos.missing.join(', ')}`]:[])].join('; '));
+        const placeholderPath=photos.missing.length?await this.ensureProductPlaceholder(pid):'';
         importedRows=[];
         for(let start=0;start<rows.length;start+=8){
           const chunk=rows.slice(start,start+8);
-          const results=await Promise.allSettled(chunk.map(async row=>{
-            const file=photos.bySku.get(row['sku']?.trim().toLowerCase()??'');
-            if(!file)throw new Error(`Missing product image for SKU ${row['sku']||'(empty)'}`);
+          const results=await Promise.allSettled(chunk.map(async (row,index)=>{
+            const file=photos.byRow.get(start+index);
+            if(!file)return {row,path:placeholderPath};
             return {row,path:await this.uploadProductPhoto(pid,file)};
           }));
           let uploadError:string|undefined;
@@ -1247,7 +1262,8 @@ export class EntryService {
           if(uploadError)throw new Error(uploadError);
         }
       }
-      const {data,error}=await supabase.rpc('import_business_rows',{_pharmacy:pid,_module:module,_rows:importedRows,_fingerprint:fingerprint,_file_name:fileName});fail(error);
+      const rpcRows=importedRows.map(row=>Object.fromEntries(Object.entries(row).filter(([key])=>!['source_id','source_row','source_expiry_date','source_received_date'].includes(key))));
+      const {data,error}=await supabase.rpc('import_business_rows',{_pharmacy:pid,_module:module,_rows:rpcRows,_fingerprint:fingerprint,_file_name:fileName});fail(error);
       const result=data as {status:string;successful_count:number;failed_count:number;error?:string};
       if(result.status==='completed')uploadedPaths.length=0;else await cleanup();
       if((module==='staff'||module==='suppliers')&&result.status==='completed'){
@@ -1554,6 +1570,27 @@ export class WorkspaceService {
 
   static async adjustBatch(pharmacyId: string, userId: string, batch: WsBatch, newQuantity: number, reason: string): Promise<void> {
     const {error}=await supabase.rpc('correct_batch_stock',{_pharmacy:pharmacyId,_batch:batch.id,_quantity:newQuantity,_reason:reason}); fail(error);
+  }
+
+  static async resetInventory(pharmacyId:string):Promise<{reset:number;total:number;failures:string[]}> {
+    const batches=(await this.getBatches(pharmacyId)).filter(batch=>batch.quantity>0);
+    let reset=0;const failures:string[]=[];
+    for(let start=0;start<batches.length;start+=8){
+      const chunk=batches.slice(start,start+8);
+      const results=await Promise.allSettled(chunk.map(async batch=>{
+        const {error}=await supabase.rpc('correct_batch_stock',{_pharmacy:pharmacyId,_batch:batch.id,_quantity:0,_reason:'Inventory reset to zero'});
+        fail(error);
+      }));
+      results.forEach((result,index)=>{
+        if(result.status==='fulfilled')reset++;
+        else{
+          const batch=chunk[index]!;
+          const reason=result.reason instanceof Error?result.reason.message:'Stock reset failed';
+          failures.push(`${batch.product_name} (${batch.batch_number}): ${reason}`);
+        }
+      });
+    }
+    return {reset,total:batches.length,failures};
   }
 
   // ---------- money ----------

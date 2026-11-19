@@ -33,6 +33,26 @@ export const importMappingInput=z.object({
  headers:z.array(z.string().trim().min(1).max(200)).min(1).max(80),
  sampleRows:z.array(z.array(z.string().max(160)).max(80)).max(3),
 });
+export const importReviewInput=z.object({
+ pharmacyId:z.string().uuid(),
+ module:z.enum(['products','batches']),
+ rows:z.array(z.object({
+  row:z.number().int().min(2),
+  values:z.array(z.object({field:z.string().max(80),value:z.string().max(160)})).max(40),
+ })).min(1).max(80),
+});
+const importReviewOutput=z.object({findings:z.array(z.object({
+ row:z.number().int().min(2),
+ field:z.string().max(80),
+ severity:z.enum(['review','warning']),
+ reason:z.string().trim().min(1).max(300),
+})).max(40)});
+export function checkedImportReview(value:unknown,module:'products'|'batches',askedRows:{row:number}[]){
+ const parsed=importReviewOutput.parse(value);
+ const allowed=new Set([...ENTRY_MODELS[module].fields.filter(f=>f.importable!==false).map(f=>f.key),'source_id','source_expiry_date','source_received_date']);
+ const rows=new Set(askedRows.map(item=>item.row));
+ return parsed.findings.filter(item=>rows.has(item.row)&&allowed.has(item.field)).map(item=>({...item,reason:item.reason.trim()}));
+}
 const importMappingOutput=z.object({mappings:z.array(z.object({
  field:z.string().max(80),header:z.string().nullable(),reason:z.string().max(240),
 })).max(40)});

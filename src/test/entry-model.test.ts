@@ -27,16 +27,21 @@ describe('real-world entry validation',()=>{
  it('does not permit imported platform admins',()=>{expect(validateEntries('staff',[{...blankEntry('staff'),full_name:'Demo',email:'demo@example.invalid',role:'super_admin'}])).toEqual(expect.arrayContaining([expect.objectContaining({column:'role'})]));});
  it('requires positive opening stock',()=>{expect(validateEntries('batches',[{product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'0',cost_per_unit:'50',expiry_date:'2028-01-01'}])).toEqual(expect.arrayContaining([expect.objectContaining({column:'quantity',reason:'Opening stock quantity must be greater than zero'})]));});
  it('detects duplicate product batches in the same branch',()=>{const batch={product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'2',cost_per_unit:'50',expiry_date:'2028-01-01'};expect(validateEntries('batches',[batch,{...batch}])).toEqual(expect.arrayContaining([expect.objectContaining({row:3,reason:'Duplicate record'})]));});
- it('maps legacy pharmacy product headers and normalizes prices and month dates',()=>{
+ it('maps legacy pharmacy IDs separately and safely normalizes dates and prices',()=>{
   const headers=['ID','Brand Name','Generic Name','Quantity','Selling Unit','Buying Price (TZS)','Selling Price (TZS)','Batch No','Expiry Month','Purchase Month'];
   const mapping=defaultImportMapping('products',headers);
-  expect(mapping).toMatchObject({sku:'ID',name:'Brand Name',generic_name:'Generic Name',quantity:'Quantity',unit_of_measurement:'Selling Unit',cost_price:'Buying Price (TZS)',selling_price:'Selling Price (TZS)',batch_number:'Batch No',expiry_date:'Expiry Month',received_date:'Purchase Month'});
+  expect(mapping).toMatchObject({sku:'',source_id:'ID',name:'Brand Name',generic_name:'Generic Name',quantity:'Quantity',unit_of_measurement:'Selling Unit',cost_price:'Buying Price (TZS)',selling_price:'Selling Price (TZS)',batch_number:'Batch No',expiry_date:'Expiry Month',received_date:'Purchase Month'});
   const price=ENTRY_MODELS.products.fields.find(field=>field.key==='cost_price')!;
   const expiry=ENTRY_MODELS.products.fields.find(field=>field.key==='expiry_date')!;
   const purchase=ENTRY_MODELS.products.fields.find(field=>field.key==='received_date')!;
+  const active=ENTRY_MODELS.products.fields.find(field=>field.key==='is_active')!;
   expect(normalizeImportValue(price,'TZS 1,500')).toBe('1500');
-  expect(normalizeImportValue(expiry,'2029 - November')).toBe('2029-11-30');
-  expect(normalizeImportValue(purchase,'2026 - November')).toBe('2026-11-01');
+  expect(normalizeImportValue(active,'Yes')).toBe('true');
+  expect(normalizeImportValue(active,'Inactive')).toBe('false');
+  expect(normalizeImportValue(expiry,'2029 - November')).toBe('');
+  expect(normalizeImportValue(purchase,'2026 - November')).toBe('');
+  expect(normalizeImportValue(purchase,'2026-November-18 8:28 PM')).toBe('2026-11-18');
+  expect(normalizeImportValue(purchase,'2026-11-18T20:28:00Z')).toBe('2026-11-18');
  });
  it('maps common stock-list headers to existing-product batch fields',()=>{
   expect(defaultImportMapping('batches',['Drug Code','Current Balance','Outlet','Lot Ref','Use By','Buy Price'])).toMatchObject({
@@ -52,8 +57,19 @@ describe('real-world entry validation',()=>{
   const photo=new File(['photo'],'pcm500.JPG',{type:'image/jpeg'});
   const result=matchProductPhotos([{...product,sku:'PCM500'},{...product,sku:'PCM501'}],[photo]);
   expect(result.bySku.get('pcm500')).toBe(photo);
+  expect(result.byRow.get(0)).toBe(photo);
   expect(result.missing).toEqual(['PCM501']);
   expect(result.errors).toEqual([]);
+ });
+ it('matches ID-named photos to PH-prefixed SKUs from a source ID',()=>{
+  const photo=new File(['photo'],'428123.jpg',{type:'image/jpeg'});
+  const result=matchProductPhotos([{...product,sku:'PH-428123',source_id:'428123'}],[photo]);
+  expect(result.byRow.get(0)).toBe(photo);
+  expect(result.missing).toEqual([]);
+ });
+ it('requires an exact received date when importing a positive stock quantity',()=>{
+  const batch={product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'2',cost_per_unit:'50',expiry_date:'2028-01-01',received_date:''};
+  expect(validateEntries('batches',[batch])).toEqual(expect.arrayContaining([expect.objectContaining({column:'received_date',reason:'Enter an exact received date; month-only values are not converted to a day'})]));
  });
 });
 import { afyadawaBarcode, fillBarcodes } from '@/lib/entry-model';

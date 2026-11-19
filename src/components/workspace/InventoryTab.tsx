@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, PackagePlus, Pill, Search, Box, Upload } from 'lucide-react';
+import { Plus, PackagePlus, Pill, Search, Box, Upload, RotateCcw } from 'lucide-react';
 import { EntryForm } from './EntryForm';
 import { ProductsCanvas } from './ProductsCanvas';
 import { EntryService, WorkspaceService } from '@/lib/pharmacy-service';
@@ -24,6 +24,8 @@ export function InventoryTab({ ws, userId, onImport }: { ws: Workspace; userId: 
   const [branch, setBranch] = useState('');
   const [editing, setEditing] = useState<Partial<WsProduct> | null>(null);
   const [receiving, setReceiving] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetConfirmation, setResetConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
 
   const refresh = () => {
@@ -37,6 +39,25 @@ export function InventoryTab({ ws, userId, onImport }: { ws: Workspace; userId: 
   const qty = (p: WsProduct) => (branch ? p.stock_by_branch[branch] || 0 : p.stock);
   const shown = products.filter((p) => `${p.name} ${p.generic_name} ${p.sku}`.toLowerCase().includes(q.toLowerCase()));
   const branchName = (id: string | null) => branches.find((b) => b.id === id)?.name ?? '—';
+  const stockBatches = batches.filter((batch) => batch.quantity > 0);
+  const stockUnits = stockBatches.reduce((total, batch) => total + batch.quantity, 0);
+  const resetInventory = async () => {
+    setBusy(true);
+    try {
+      const result = await WorkspaceService.resetInventory(pid);
+      refresh();
+      if (result.failures.length) {
+        toast.error(`Reset partially completed: cleared ${result.reset} of ${result.total} batches. ${result.failures.slice(0, 3).join('; ')}`);
+      } else {
+        toast.success(`Inventory reset: ${result.reset} batches set to zero. Products and history were preserved.`);
+        setResetOpen(false);
+      }
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -48,6 +69,7 @@ export function InventoryTab({ ws, userId, onImport }: { ws: Workspace; userId: 
         </div>
         {editable && <div className="flex flex-wrap gap-2">
           <button className="h-11 px-4 rounded-xl border border-blue-600 text-blue-700 bg-white font-bold text-sm inline-flex items-center gap-2 disabled:opacity-50" disabled={!products.length || !branches.length} onClick={() => setReceiving('')}><PackagePlus className="w-4 h-4" /> Receive Stock</button>
+          <button className="h-11 px-4 rounded-xl border border-rose-300 text-rose-700 bg-white font-bold text-sm inline-flex items-center gap-2 disabled:opacity-50" disabled={!stockBatches.length || busy} onClick={() => { setResetConfirmation(''); setResetOpen(true); }}><RotateCcw className="w-4 h-4" /> Reset Inventory</button>
           {onImport && <button className="h-11 px-4 rounded-xl border border-blue-600 text-blue-700 bg-white font-bold text-sm inline-flex items-center gap-2" onClick={onImport}><Upload className="w-4 h-4" /> Bulk Import</button>}
           <button className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm inline-flex items-center gap-2" onClick={() => setEditing({})}><Plus className="w-4 h-4" /> Add Product</button>
         </div>}
@@ -138,6 +160,17 @@ export function InventoryTab({ ws, userId, onImport }: { ws: Workspace; userId: 
 
       {editing && <EntryForm module="products" initial={editing.id ? entryProducts.find(p=>p.id===editing.id) : undefined} imageSrc={editing.image_src ?? null} existing={entryProducts} references={refs} onClose={()=>setEditing(null)} onSave={async (row,photo)=>{await EntryService.save(pid,'products',row,editing.id,photo);refresh();void qc.invalidateQueries({queryKey:['entry',pid]});}} />}
       {receiving !== null && <EntryForm module="batches" references={refs} onClose={()=>setReceiving(null)} onSave={async row=>{await EntryService.save(pid,'batches',row);refresh();}} />}
+      {resetOpen && <Modal title="Reset inventory stock" onClose={() => !busy && setResetOpen(false)}>
+        <p className="text-sm text-slate-700">This sets every positive batch balance in <b>all branches</b> to zero. It does not delete products or batch records; each change is recorded in stock history.</p>
+        <p className="text-sm font-bold text-rose-700">{stockBatches.length} batches · {formatNumber(stockUnits)} units will be cleared.</p>
+        <Field label="Type RESET to confirm">
+          <input className={inputCls} value={resetConfirmation} onChange={(event) => setResetConfirmation(event.currentTarget.value)} autoComplete="off" />
+        </Field>
+        <div className="flex justify-end gap-2">
+          <button type="button" className={ghostBtn} disabled={busy} onClick={() => setResetOpen(false)}>Cancel</button>
+          <button type="button" className={`${primaryBtn} bg-rose-600 hover:bg-rose-700`} disabled={busy || resetConfirmation.trim() !== 'RESET'} onClick={() => void resetInventory()}>{busy ? 'Resetting…' : 'Set stock to zero'}</button>
+        </div>
+      </Modal>}
 
     </div>
   );

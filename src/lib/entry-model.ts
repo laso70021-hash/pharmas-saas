@@ -21,7 +21,7 @@ export interface EntryError { row: number; column: string; reason: string }
 export function blankEntry(module: EntryModule): EntryRow { return Object.fromEntries(ENTRY_MODELS[module].fields.map(f=>[f.key,f.default ?? ''])); }
 const IMPORT_HEADER_ALIASES: Record<string, string[]> = {
  name: ['product name', 'brand name'],
- sku: ['product sku', 'product id', 'id', 'item code'],
+ sku: ['product sku', 'item code', 'item code (sku)', 'stock code'],
  product_sku: ['sku', 'product id', 'id', 'product code', 'drug code', 'medicine code', 'item code', 'code'],
  brand_name: ['brand name'],
  unit_of_measurement: ['selling unit', 'unit'],
@@ -38,38 +38,75 @@ const IMPORT_HEADER_ALIASES: Record<string, string[]> = {
 const normalizeHeader = (value: string) => value.replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 export function defaultImportMapping(module: EntryModule, headers: string[]): Record<string, string> {
  const normalized = headers.map(normalizeHeader);
- return Object.fromEntries(ENTRY_MODELS[module].fields.filter(f=>f.importable!==false).map(field=>{
+ const mapping = Object.fromEntries(ENTRY_MODELS[module].fields.filter(f=>f.importable!==false).map(field=>{
   const candidates=[field.key,field.label,...(IMPORT_HEADER_ALIASES[field.key]??[])].map(normalizeHeader);
   const index=candidates.map(candidate=>normalized.indexOf(candidate)).find(i=>i>=0)??-1;
   return [field.key,headers[index]??''];
  }));
+ if(module==='products'){
+  const index=normalized.findIndex(header=>['id','sourceid','externalid','productid'].includes(header));
+  if(index>=0)mapping['source_id']=headers[index]??'';
+ }
+ return mapping;
 }
+const dateValue=(year:number,month:number,day:number,original:string):string=>{
+ const date=new Date(Date.UTC(year,month-1,day));
+ return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day
+  ?`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+  :original;
+};
+const isValidIsoDate=(value:string):boolean=>{
+ const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+ if(!match)return false;
+ const year=Number(match[1]);const month=Number(match[2]);const day=Number(match[3]);const date=new Date(Date.UTC(year,month-1,day));
+ return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day;
+};
+const MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
 export function normalizeImportValue(field: EntryField, input: string): string {
  const value=input.trim();
  if(!value)return '';
  if(field.type==='number'||field.type==='integer')return value.replace(/^TZS\s*/i,'').replace(/,/g,'').trim();
+ if(field.type==='boolean'){
+  if(['true','yes','y','1','active'].includes(value.toLowerCase()))return 'true';
+  if(['false','no','n','0','inactive'].includes(value.toLowerCase()))return 'false';
+ }
  if(field.type==='date'){
-  const monthMatch=/^(?:(\d{4})\s*[-/]\s*([A-Za-z]+)|([A-Za-z]+)\s+(\d{4}))$/.exec(value);
-  if(monthMatch){
-   const year=Number(monthMatch[1]??monthMatch[4]);
-   const monthName=(monthMatch[2]??monthMatch[3]??'').toLowerCase();
-   const month=['january','february','march','april','may','june','july','august','september','october','november','december'].indexOf(monthName);
-   if(month>=0){const day=field.key==='expiry_date'?new Date(Date.UTC(year,month+1,0)).getUTCDate():1;return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;}
-  }
+  const iso=value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if(iso)return dateValue(Number(iso[1]),Number(iso[2]),Number(iso[3]),value);
+  const yearMonthDay=value.match(/^(\d{4})[-/\s]+([A-Za-z]+)[-/\s]+(\d{1,2})(?:[,\s].*)?$/);
+  if(yearMonthDay){const month=MONTHS.indexOf((yearMonthDay[2]??'').toLowerCase())+1;if(month)return dateValue(Number(yearMonthDay[1]),month,Number(yearMonthDay[3]),value);}
+  const dayMonthYear=value.match(/^(\d{1,2})[-/\s]+([A-Za-z]+)[,/\s-]+(\d{4})(?:[,\s].*)?$/);
+  if(dayMonthYear){const month=MONTHS.indexOf((dayMonthYear[2]??'').toLowerCase())+1;if(month)return dateValue(Number(dayMonthYear[3]),month,Number(dayMonthYear[1]),value);}
+  const monthDayYear=value.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})(?:[,\s].*)?$/);
+  if(monthDayYear){const month=MONTHS.indexOf((monthDayYear[1]??'').toLowerCase())+1;if(month)return dateValue(Number(monthDayYear[3]),month,Number(monthDayYear[2]),value);}
+  if(/^(?:\d{4}\s*[-/]\s*[A-Za-z]+|[A-Za-z]+\s+\d{4})$/.test(value))return '';
  }
  return value;
 }
 export function matchProductPhotos(rows: EntryRow[], files: File[]) {
- const bySku=new Map<string,File>();const errors:string[]=[];
+ const bySku=new Map<string,File>();const byRow=new Map<number,File>();const errors:string[]=[];const unmatched:string[]=[];
+ const identifiers=new Map<string,number[]>();
+ rows.forEach((row,index)=>{
+  const sku=(row['sku']??'').trim().toLowerCase();
+  const sourceId=(row['source_id']??'').trim().toLowerCase();
+  const keys=new Set([sku,sourceId].filter(Boolean));
+  if(sourceId)keys.add(`ph-${sourceId}`);
+  if(sku.startsWith('ph-'))keys.add(sku.slice(3));
+  for(const key of keys)identifiers.set(key,[...(identifiers.get(key)??[]),index]);
+ });
  for(const file of files){
   const match=/^(.+)\.(jpe?g|png|webp)$/i.exec(file.name);
   if(!match||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){errors.push(`${file.name}: choose a JPG, PNG or WebP under 5 MB`);continue;}
-  const key=(match[1]??'').trim().toLowerCase();
-  if(bySku.has(key)){errors.push(`${file.name}: more than one image matches ${match[1]}`);continue;}
-  bySku.set(key,file);
+  const key=(match[1]??'').trim().toLowerCase();const candidates=identifiers.get(key)??[];
+  if(!candidates.length){unmatched.push(file.name);continue;}
+  if(candidates.length!==1){errors.push(`${file.name}: identifier ${match[1]} matches more than one product`);continue;}
+  const index=candidates[0]!;
+  if(byRow.has(index)){errors.push(`${file.name}: more than one image matches ${rows[index]?.['sku']||rows[index]?.['source_id']||'this product'}`);continue;}
+  byRow.set(index,file);
+  if(rows[index]?.['sku'])bySku.set(rows[index]!['sku']!.trim().toLowerCase(),file);
  }
- const missing=rows.filter(row=>!bySku.has((row['sku']??'').trim().toLowerCase())).map(row=>row['sku']?.trim()||'SKU missing');
- return {bySku,errors,missing};
+ const missing=rows.flatMap((row,index)=>byRow.has(index)?[]:[row['sku']?.trim()||row['source_id']?.trim()||`row ${index+2}`]);
+ return {bySku,byRow,errors,missing,unmatched};
 }
 export function replaceEntryReference(rows: EntryRow[], column: string, source: string, replacement: string): EntryRow[] {
  return rows.map(row => (row[column] ?? '').trim().toLowerCase() === source.trim().toLowerCase() ? {...row, [column]: replacement} : row);
@@ -79,12 +116,12 @@ export function validateEntries(module: EntryModule, rows: EntryRow[], existing:
  const identity=(r:EntryRow)=>model.unique.map(k=>(r[k]??'').trim().toLowerCase()).join('|');
  const old=new Set(existing.map(identity));
  rows.forEach((r,index)=>{
-  const add=(column:string,reason:string)=>errors.push({row:index+2,column,reason});
+  const add=(column:string,reason:string)=>errors.push({row:Number(r['source_row'])||index+2,column,reason});
   for(const f of model.fields){
    const value=(r[f.key]??'').trim();
    if(!value){if(f.required)add(f.key,'Required value is missing');continue;}
    if((f.type==='number'||f.type==='integer')&&(!Number.isFinite(Number(value))||Number(value)<0||(f.type==='integer'&&!Number.isInteger(Number(value)))))add(f.key,'Enter a non-negative '+(f.type==='integer'?'whole number':'number'));
-   if(f.type==='date'&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value))add(f.key,'Use a valid date in YYYY-MM-DD format');
+   if(f.type==='date'&&value&&!isValidIsoDate(value))add(f.key,'Use a valid date in YYYY-MM-DD format');
    if(f.type==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))add(f.key,'Enter a valid email address');
    if(f.type==='boolean'&&!['true','false'].includes(value.toLowerCase()))add(f.key,'Use true or false');
    if(f.options&&!f.options.includes(value))add(f.key,'Choose one of: '+f.options.join(', '));
@@ -94,8 +131,9 @@ export function validateEntries(module: EntryModule, rows: EntryRow[], existing:
    }
   }
   if(module==='products'&&Number(r['quantity'])>0){
-   for(const key of ['branch_code','batch_number','expiry_date'])if(!(r[key]??'').trim())add(key,'Required when opening stock quantity is greater than zero');
+   for(const key of ['branch_code','batch_number','expiry_date','received_date'])if(!(r[key]??'').trim())add(key,key==='received_date'?'Enter an exact received date; month-only values are not converted to a day':'Required when opening stock quantity is greater than zero');
   }
+  if(module==='batches'&&Number(r['quantity'])>0&&!(r['received_date']??'').trim())add('received_date','Enter an exact received date; month-only values are not converted to a day');
   if(module==='batches'&&r['manufacturing_date']&&r['expiry_date']&&r['manufacturing_date']>r['expiry_date'])add('manufacturing_date','Manufacturing date must not be after expiry date');
   if(module==='batches'&&Number(r['quantity'])===0)add('quantity','Opening stock quantity must be greater than zero');
   if(model.unique.length&&model.unique.every(k=>r[k]?.trim())){const key=identity(r);if(seen.has(key)||old.has(key))add(model.unique.join(', '),'Duplicate record');seen.add(key);}

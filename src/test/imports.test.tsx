@@ -5,8 +5,9 @@ import { ImportsTab } from '@/components/workspace/ImportsTab';
 import type { Workspace } from '@/lib/pharmacy-types';
 const suggest=vi.hoisted(()=>vi.fn(async()=>({category:{id:'category-1',name:'Analgesics'},reason:'Matches pain relief products.',error:null})));
 const mapColumns=vi.hoisted(()=>vi.fn(async()=>({mapping:{} as Record<string,string>,reasons:[] as {field:string;header:string;reason:string}[],error:null as string|null})));
+const review=vi.hoisted(()=>vi.fn(async()=>({findings:[] as {row:number;field:string;severity:'review'|'warning';reason:string}[],error:null as string|null})));
 vi.mock('@tanstack/react-start',()=>({useServerFn:(fn:unknown)=>fn}));
-vi.mock('@/lib/import-suggestions.functions',()=>({suggestImportCategory:suggest,suggestImportMapping:mapColumns,resolveImportReferences:vi.fn()}));
+vi.mock('@/lib/import-suggestions.functions',()=>({suggestImportCategory:suggest,suggestImportMapping:mapColumns,reviewImportRows:review,resolveImportReferences:vi.fn()}));
 vi.mock('@/lib/invoice-scan.functions',()=>({scanInvoice:vi.fn()}));
 
 const service=vi.hoisted(()=>({
@@ -70,25 +71,77 @@ describe('import category resolution',()=>{
   fireEvent.change(screen.getByLabelText('Upload product photos'),{target:{files:[new File(['photo'],'428126.jpg',{type:'image/jpeg'})]}});
   fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
   expect(screen.getByLabelText('Opening stock branch')).toHaveValue('MAIN');
+  expect(screen.getByLabelText('Row 2 sku')).toHaveValue('PH-428126');
+  expect(screen.getByLabelText('Row 2 source_id')).toHaveValue('428126');
   expect(screen.getByLabelText('Row 2 quantity')).toHaveValue('4');
-  expect(screen.getByLabelText('Row 2 expiry_date')).toHaveValue('2029-11-30');
+  expect(screen.getByText('2029 - November')).toBeInTheDocument();
+  expect(screen.getByText('2026 - November')).toBeInTheDocument();
+  expect(screen.getByLabelText('Row 2 expiry_date')).toHaveValue('');
+  expect(screen.getByLabelText('Row 2 received_date')).toHaveValue('');
+  fireEvent.change(screen.getByLabelText('Row 2 expiry_date'),{target:{value:'2029-11-30'}});
+  fireEvent.change(screen.getByLabelText('Row 2 received_date'),{target:{value:'2026-11-18'}});
   fireEvent.click(await screen.findByRole('button',{name:'Import 1 records'}));
   fireEvent.click(screen.getByRole('button',{name:'Confirm import'}));
   await screen.findByText('1 records imported. No failed records.');
   expect(service.import).toHaveBeenCalledWith('test-pharmacy','products',[
-   expect.objectContaining({sku:'428126',name:'VIGOR DOCTOR',quantity:'4',branch_code:'MAIN',batch_number:'V240',expiry_date:'2029-11-30',received_date:'2026-11-01',cost_price:'1500',cost_per_unit:'1500',selling_price:'3000'}),
+   expect.objectContaining({sku:'PH-428126',source_id:'428126',source_row:'2',name:'VIGOR DOCTOR',quantity:'4',branch_code:'MAIN',batch_number:'V240',expiry_date:'2029-11-30',received_date:'2026-11-18',cost_price:'1500',cost_per_unit:'1500',selling_price:'3000'}),
   ],'legacy-products.csv',expect.arrayContaining([expect.objectContaining({name:'428126.jpg'})]));
+ });
+ it('allows products without photos and explains that a placeholder will be used',async()=>{
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><ImportsTab ws={ws}/></QueryClientProvider>);
+  service.import.mockResolvedValueOnce({status:'completed',successful_count:1,failed_count:0});
+  const file=new File([''],'no-photos.csv',{type:'text/csv'});
+  Object.defineProperty(file,'text',{value:async()=> 'name,sku,unit_of_measurement,selling_price\nParacetamol,PCM500,tablet,100'});
+  fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
+  expect(await screen.findByText(/1 will use a neutral placeholder and can be updated later/)).toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText('I understand these products will be imported with zero stock.'));
+  fireEvent.click(screen.getByRole('button',{name:'Import 1 records'}));
+  fireEvent.click(screen.getByRole('button',{name:'Confirm import'}));
+  await screen.findByText('1 records imported. No failed records.');
+  expect(service.import).toHaveBeenCalledWith('test-pharmacy','products',[
+   expect.objectContaining({sku:'PCM500'}),
+  ],'no-photos.csv',[]);
+ });
+ it('lets staff review every row while preserving source row numbers',async()=>{
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><ImportsTab ws={ws}/></QueryClientProvider>);
+  const products=Array.from({length:51},(_,index)=>`Product ${index+1},SKU${index+1},tablet,100`);
+  const file=new File([''],'many-products.csv',{type:'text/csv'});
+  Object.defineProperty(file,'text',{value:async()=> `name,sku,unit_of_measurement,selling_price\n${products[0]}\n\n${products.slice(1).join('\n')}`});
+  fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
+  expect(await screen.findByText('Reviewing rows 1–50 of 51. All rows are validated.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Next'}));
+  expect(screen.getByLabelText('Row 53 sku')).toHaveValue('SKU51');
+ });
+ it('asks Covlo to review all rows and only reports findings without changing values',async()=>{
+  review.mockResolvedValueOnce({findings:[{row:2,field:'dosage_form',severity:'review',reason:'The dosage form may not match the product name.'}],error:null});
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><ImportsTab ws={ws}/></QueryClientProvider>);
+  const file=new File([''],'review.csv',{type:'text/csv'});
+  Object.defineProperty(file,'text',{value:async()=> 'name,sku,unit_of_measurement,selling_price,dosage_form\nSpeniv Susp 100ml,PH-428123,bottle,4000,NEEDLES\nOther Product,PH-428124,tablet,200,Tablet'});
+  fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Ask Covlo to review all 2 rows'}));
+  await screen.findByText('Covlo reviewed all 2 rows and flagged 1 item(s) for staff review. No values were changed.');
+  expect(review).toHaveBeenCalledWith({data:expect.objectContaining({pharmacyId:ws.id,module:'products',rows:expect.arrayContaining([
+   expect.objectContaining({row:2,values:expect.arrayContaining([expect.objectContaining({field:'dosage_form',value:'NEEDLES'})])}),
+   expect.objectContaining({row:3,values:expect.arrayContaining([expect.objectContaining({field:'dosage_form',value:'Tablet'})])}),
+  ])})});
+  expect(screen.getByLabelText('Row 2 dosage_form')).toHaveValue('NEEDLES');
  });
  it('uses Covlo mappings to turn an existing product file into a stock-only import',async()=>{
   service.list.mockResolvedValueOnce([{id:'existing-1',sku:'P-101',name:'Medicine',strength:'500mg'}] as never);
-  mapColumns.mockResolvedValueOnce({mapping:{sku:'Drug Code',quantity:'Current Balance',batch_number:'Lot Ref',expiry_date:'Use By',cost_price:'Buy Cost'},reasons:[{field:'quantity',header:'Current Balance',reason:'Current stock balance'}],error:null});
+  mapColumns.mockResolvedValueOnce({mapping:{sku:'Drug Code',quantity:'Current Balance',batch_number:'Lot Ref',expiry_date:'Use By',received_date:'Date Received',cost_per_unit:'Buy Cost'},reasons:[{field:'quantity',header:'Current Balance',reason:'Current stock balance'}],error:null});
   const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
   render(<QueryClientProvider client={client}><ImportsTab ws={ws}/></QueryClientProvider>);
   const file=new File([''],'stock-list.csv',{type:'text/csv'});
-  Object.defineProperty(file,'text',{value:async()=> 'Drug Code,Current Balance,Lot Ref,Use By,Buy Cost\nP-101,15,B-12,2027-12-31,75\nP-999,8,B-13,2028-12-31,60'});
+  Object.defineProperty(file,'text',{value:async()=> 'Drug Code,Current Balance,Lot Ref,Use By,Buy Cost,Date Received\nP-101,15,B-12,2027-12-31,75,2026-11-18\nP-999,8,B-13,2028-12-31,60,2026-11-18'});
   fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
   fireEvent.click(await screen.findByRole('button',{name:'Ask Covlo to map these columns'}));
-  await waitFor(()=>expect(screen.getByText('Covlo suggested 5 column mappings. Review them and preview the rows before importing.')).toBeInTheDocument());
+  await waitFor(()=>expect(screen.getByText('Covlo suggested 6 column mappings. Review them and preview the rows before importing.')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button',{name:'Preview and validate'}));
   expect(await screen.findByText(/1 row\(s\) have positive quantities and SKUs already in your catalogue/)).toBeInTheDocument();
   fireEvent.click(await screen.findByRole('button',{name:'Use this file to add stock to existing products'}));
