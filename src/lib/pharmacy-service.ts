@@ -39,7 +39,7 @@ import {
 import type { WorkspaceRole, StaffRole } from './workspace';
 import { formatDateDeterministic } from './utils';
 import { effectiveStatus, yearlyPrice } from './billing';
-import type { EntryModule, EntryRow, EntryReferences } from './entry-model';
+import { matchProductPhotos, type EntryModule, type EntryRow, type EntryReferences } from './entry-model';
 import { DeliveryService } from './delivery-service';
 import { riderHomeData } from './role-home';
 
@@ -1182,30 +1182,89 @@ export class EntryService {
       manager_id: staff.filter(x=>x.role==='manager' && x['is_active']).map(x=>({value:x.user_id,label:x.full_name})),
     };
   }
-  static async save(pid: string,module: EntryModule,row: EntryRow,id?: string): Promise<string> {
-    const { data,error } = await supabase.rpc('save_business_entry',{_pharmacy:pid,_module:module,_row:row,_id:id ?? null}); fail(error);
+  private static async uploadProductPhoto(pid: string,file: File): Promise<string> {
+    if(file.size>5*1024*1024 || !['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Choose a JPG, PNG or WebP under 5 MB');
+    const {squareProductImage}=await import('./image-resize');file=await squareProductImage(file);
+    const path=`${pid}/${crypto.randomUUID()}`;
+    const {error}=await supabase.storage.from('product-images').upload(path,file,{contentType:file.type});fail(error);
+    return path;
+  }
+  private static async removeProductPhotos(paths: string[]): Promise<void> {
+    if(!paths.length)return;
+    const {error}=await supabase.storage.from('product-images').remove(paths);fail(error);
+  }
+  static async save(pid: string,module: EntryModule,row: EntryRow,id?: string,photo?: File): Promise<string> {
+    if(module==='products'&&!id&&!photo&&!row['image_url'])throw new Error('A product image is required');
+    const payload={...row};
+    let uploadedPath:string|undefined;
+    if(photo){uploadedPath=await this.uploadProductPhoto(pid,photo);payload['image_url']=uploadedPath;}
+    if(module==='products'&&payload['image_url']&&!payload['image_url'].startsWith(`${pid}/`)){
+      if(uploadedPath)await this.removeProductPhotos([uploadedPath]);
+      throw new Error('Product image must belong to this pharmacy');
+    }
+    let data: unknown;
+    try {
+      const result = await supabase.rpc('save_business_entry',{_pharmacy:pid,_module:module,_row:payload,_id:id ?? null}); fail(result.error); data=result.data;
+    } catch(error) {
+      if(uploadedPath){
+        try { await this.removeProductPhotos([uploadedPath]); }
+        catch(cleanupError) { throw new Error(`${error instanceof Error?error.message:'Save failed'} Uploaded image cleanup failed: ${cleanupError instanceof Error?cleanupError.message:'unknown error'}`); }
+      }
+      throw error;
+    }
     if(!id&&row['email']&&(module==='staff'||module==='suppliers'))try{await sendRecordEmail({data:{kind:module==='staff'?'pharmacy_invites':'suppliers',id:String(data),invite:module==='staff'}});}catch(e){toast.error(e instanceof Error?e.message:'Record saved; email failed. Use Send email to retry.');}
     return String(data);
   }
   static async photo(pid:string,id:string,file:File) {
-    if(file.size>5*1024*1024 || !['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Choose a JPG, PNG or WebP under 5 MB');
-    const {squareProductImage}=await import('./image-resize');file=await squareProductImage(file);
-    const path=`${pid}/${crypto.randomUUID()}`;const {error}=await supabase.storage.from('product-images').upload(path,file,{contentType:file.type});fail(error);
-    const {error:update}=await supabase.from('products').update({image_url:path}).eq('id',id).eq('pharmacy_id',pid);fail(update);
+    const path=await this.uploadProductPhoto(pid,file);
+    try {const {error}=await supabase.from('products').update({image_url:path}).eq('id',id).eq('pharmacy_id',pid);fail(error);}
+    catch(error){try{await this.removeProductPhotos([path]);}catch(cleanupError){throw new Error(`${error instanceof Error?error.message:'Photo update failed'} Uploaded image cleanup failed: ${cleanupError instanceof Error?cleanupError.message:'unknown error'}`);}throw error;}
   }
-  static async import(pid: string,module: EntryModule,rows: EntryRow[],fileName: string) {
+  static async import(pid: string,module: EntryModule,rows: EntryRow[],fileName: string,productPhotos: File[] = []) {
     const bytes = new TextEncoder().encode(JSON.stringify({module,rows}));
     const digest = await crypto.subtle.digest('SHA-256',bytes);
     const fingerprint = Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
-    const {data,error}=await supabase.rpc('import_business_rows',{_pharmacy:pid,_module:module,_rows:rows,_fingerprint:fingerprint,_file_name:fileName}); fail(error);
-    if((module==='staff'||module==='suppliers')&&(data as {status?:string})?.status==='completed'){
-      const saved=await this.list(pid,module);let failed=0;
-      for(const row of rows){const email=row['email']?.trim().toLowerCase();if(!email)continue;const match=saved.find(r=>r['email']?.trim().toLowerCase()===email);if(!match){failed++;continue;}
-        try{await sendRecordEmail({data:{kind:module==='staff'?'pharmacy_invites':'suppliers',id:match.id,invite:module==='staff'}});}catch{failed++;}
+    const uploadedPaths:string[]=[];
+    const cleanup=async()=>{const paths=uploadedPaths.splice(0);await this.removeProductPhotos(paths);};
+    let importedRows=rows;
+    try{
+      if(module==='products'){
+        const photos=matchProductPhotos(rows,productPhotos);
+        if(photos.errors.length||photos.missing.length)throw new Error([...photos.errors,...(photos.missing.length?[`Missing product images for: ${photos.missing.join(', ')}`]:[])].join('; '));
+        importedRows=[];
+        for(let start=0;start<rows.length;start+=8){
+          const chunk=rows.slice(start,start+8);
+          const results=await Promise.allSettled(chunk.map(async row=>{
+            const file=photos.bySku.get(row['sku']?.trim().toLowerCase()??'');
+            if(!file)throw new Error(`Missing product image for SKU ${row['sku']||'(empty)'}`);
+            return {row,path:await this.uploadProductPhoto(pid,file)};
+          }));
+          let uploadError:string|undefined;
+          for(const result of results){
+            if(result.status==='fulfilled'){uploadedPaths.push(result.value.path);importedRows.push({...result.value.row,image_url:result.value.path});}
+            else uploadError=result.reason instanceof Error?result.reason.message:'Product photo upload failed';
+          }
+          if(uploadError)throw new Error(uploadError);
+        }
       }
-      if(failed)toast.error(`${failed} imported contacts could not be emailed. Records are saved; use Send email in Staff or Suppliers to retry.`);
+      const {data,error}=await supabase.rpc('import_business_rows',{_pharmacy:pid,_module:module,_rows:importedRows,_fingerprint:fingerprint,_file_name:fileName});fail(error);
+      const result=data as {status:string;successful_count:number;failed_count:number;error?:string};
+      if(result.status==='completed')uploadedPaths.length=0;else await cleanup();
+      if((module==='staff'||module==='suppliers')&&result.status==='completed'){
+        const saved=await this.list(pid,module);let failed=0;
+        for(const row of rows){const email=row['email']?.trim().toLowerCase();if(!email)continue;const match=saved.find(r=>r['email']?.trim().toLowerCase()===email);if(!match){failed++;continue;}
+          try{await sendRecordEmail({data:{kind:module==='staff'?'pharmacy_invites':'suppliers',id:match.id,invite:module==='staff'}});}catch{failed++;}
+        }
+        if(failed)toast.error(`${failed} imported contacts could not be emailed. Records are saved; use Send email in Staff or Suppliers to retry.`);
+      }
+      return result;
+    }catch(error){
+      if(uploadedPaths.length){
+        try{await cleanup();}
+        catch(cleanupError){throw new Error(`${error instanceof Error?error.message:'Import failed'} Uploaded image cleanup failed: ${cleanupError instanceof Error?cleanupError.message:'unknown error'}`);}
+      }
+      throw error;
     }
-    return data as {status:string;successful_count:number;failed_count:number;error?:string};
   }
   static async history(pid: string) {
     const {data,error}=await supabase.from('import_history').select('*').eq('pharmacy_id',pid).order('created_at',{ascending:false}); fail(error); return data ?? [];
@@ -1445,9 +1504,17 @@ export class WorkspaceService {
     fail(error);
   }
 
-  static async setProductActive(productId: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase.from('products').update({ is_active: isActive }).eq('id', productId);
+  static async setProductsActive(pharmacyId: string, productIds: string[], isActive: boolean): Promise<void> {
+    const ids = [...new Set(productIds)];
+    if (!ids.length) return;
+    const { data, error } = await supabase
+      .from('products')
+      .update({ is_active: isActive })
+      .eq('pharmacy_id', pharmacyId)
+      .in('id', ids)
+      .select('id');
     fail(error);
+    if ((data || []).length !== ids.length) throw new Error('Some selected products could not be updated. Refresh and try again.');
   }
 
   static async getBatches(pharmacyId: string): Promise<WsBatch[]> {

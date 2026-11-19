@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blankEntry,replaceEntryReference,validateEntries } from '@/lib/entry-model';
+import { blankEntry,defaultImportMapping,matchProductPhotos,normalizeImportValue,replaceEntryReference,validateEntries,ENTRY_MODELS } from '@/lib/entry-model';
 const product={...blankEntry('products'),name:'Paracetamol',sku:'PCM500',unit_of_measurement:'tablet',selling_price:'100'};
 describe('real-world entry validation',()=>{
  it('resolves all matching category errors without changing other categories',()=>{
@@ -27,6 +27,29 @@ describe('real-world entry validation',()=>{
  it('does not permit imported platform admins',()=>{expect(validateEntries('staff',[{...blankEntry('staff'),full_name:'Demo',email:'demo@example.invalid',role:'super_admin'}])).toEqual(expect.arrayContaining([expect.objectContaining({column:'role'})]));});
  it('requires positive opening stock',()=>{expect(validateEntries('batches',[{product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'0',cost_per_unit:'50',expiry_date:'2028-01-01'}])).toEqual(expect.arrayContaining([expect.objectContaining({column:'quantity',reason:'Opening stock quantity must be greater than zero'})]));});
  it('detects duplicate product batches in the same branch',()=>{const batch={product_sku:'PCM500',branch_code:'MAIN',batch_number:'B1',quantity:'2',cost_per_unit:'50',expiry_date:'2028-01-01'};expect(validateEntries('batches',[batch,{...batch}])).toEqual(expect.arrayContaining([expect.objectContaining({row:3,reason:'Duplicate record'})]));});
+ it('maps legacy pharmacy product headers and normalizes prices and month dates',()=>{
+  const headers=['ID','Brand Name','Generic Name','Quantity','Selling Unit','Buying Price (TZS)','Selling Price (TZS)','Batch No','Expiry Month','Purchase Month'];
+  const mapping=defaultImportMapping('products',headers);
+  expect(mapping).toMatchObject({sku:'ID',name:'Brand Name',generic_name:'Generic Name',quantity:'Quantity',unit_of_measurement:'Selling Unit',cost_price:'Buying Price (TZS)',selling_price:'Selling Price (TZS)',batch_number:'Batch No',expiry_date:'Expiry Month',received_date:'Purchase Month'});
+  const price=ENTRY_MODELS.products.fields.find(field=>field.key==='cost_price')!;
+  const expiry=ENTRY_MODELS.products.fields.find(field=>field.key==='expiry_date')!;
+  const purchase=ENTRY_MODELS.products.fields.find(field=>field.key==='received_date')!;
+  expect(normalizeImportValue(price,'TZS 1,500')).toBe('1500');
+  expect(normalizeImportValue(expiry,'2029 - November')).toBe('2029-11-30');
+  expect(normalizeImportValue(purchase,'2026 - November')).toBe('2026-11-01');
+ });
+ it('requires batch details and a valid branch for imported opening stock',()=>{
+  const refs={branch_code:[{value:'MAIN',label:'Main'}]};
+  expect(validateEntries('products',[{...product,quantity:'4',batch_number:'B1',expiry_date:'2028-01-01',branch_code:'OTHER'}],[],refs)).toEqual(expect.arrayContaining([expect.objectContaining({column:'branch_code',reason:'Unknown or ambiguous reference: OTHER'})]));
+  expect(validateEntries('products',[{...product,quantity:'4'}],[],refs)).toEqual(expect.arrayContaining([expect.objectContaining({column:'batch_number',reason:'Required when opening stock quantity is greater than zero'}),expect.objectContaining({column:'expiry_date',reason:'Required when opening stock quantity is greater than zero'})]));
+ });
+ it('matches uploaded photos to product SKU case-insensitively and reports missing images',()=>{
+  const photo=new File(['photo'],'pcm500.JPG',{type:'image/jpeg'});
+  const result=matchProductPhotos([{...product,sku:'PCM500'},{...product,sku:'PCM501'}],[photo]);
+  expect(result.bySku.get('pcm500')).toBe(photo);
+  expect(result.missing).toEqual(['PCM501']);
+  expect(result.errors).toEqual([]);
+ });
 });
 import { afyadawaBarcode, fillBarcodes } from '@/lib/entry-model';
 describe('Afyadawa barcodes', () => {

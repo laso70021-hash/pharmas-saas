@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Tag, CircleDollarSign, ShoppingBag, AlertTriangle, CalendarClock, CalendarX, Search, ArrowUpDown, Pill, Eye, MoreVertical, Building2, LayoutGrid, Layers, CalendarDays, Download, ArrowUp, Check } from 'lucide-react';
+import { Tag, CircleDollarSign, ShoppingBag, AlertTriangle, CalendarClock, CalendarX, Search, ArrowUpDown, Pill, Eye, MoreVertical, Building2, LayoutGrid, Layers, CalendarDays, Download, ArrowUp, Check, Trash2 } from 'lucide-react';
 import type { WsBatch, WsProduct } from '@/lib/pharmacy-types';
 import { canvasKpis, canvasRows, type CanvasFilter, type CanvasRow } from '@/lib/product-canvas';
 import { filterByRange, type DateRange } from '@/lib/date-range';
@@ -11,9 +11,9 @@ const pct = (n: number) => `${n.toFixed(2)}%`;
 const TONES = ['bg-blue-50 text-blue-600', 'bg-purple-50 text-purple-600', 'bg-emerald-50 text-emerald-600', 'bg-sky-50 text-sky-600', 'bg-rose-50 text-rose-600', 'bg-amber-50 text-amber-600'];
 const pillCls = 'h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30';
 
-export function ProductsCanvas({ products, batches, branches, onEdit, onStock, editable }: {
+export function ProductsCanvas({ products, batches, branches, onEdit, onStock, onReactivate, onBulkDelete, editable, busy }: {
   products: WsProduct[]; batches: WsBatch[]; branches: { id: string; name: string }[];
-  onEdit: (p: WsProduct) => void; onStock: (p: WsProduct) => void; editable: boolean;
+  onEdit: (p: WsProduct) => void; onStock: (p: WsProduct) => void; onReactivate: (id: string) => Promise<void>; onBulkDelete: (ids: string[]) => Promise<boolean>; editable: boolean; busy: boolean;
 }) {
   const [filter, setFilter] = useState<CanvasFilter>('all');
   const [q, setQ] = useState('');
@@ -24,6 +24,7 @@ export function ProductsCanvas({ products, batches, branches, onEdit, onStock, e
   const [size, setSize] = useState(20); const [page, setPage] = useState(1);
   const [menu, setMenu] = useState<string | null>(null);
   const [viewing, setViewing] = useState<CanvasRow | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
   const bBatches = useMemo(() => batches.filter((b) => !branch || b.branch_id === branch), [batches, branch]);
   const k = canvasKpis(products, bBatches);
@@ -50,6 +51,8 @@ export function ProductsCanvas({ products, batches, branches, onEdit, onStock, e
   const pages = Math.max(1, Math.ceil(rows.length / size));
   const cur = Math.min(page, pages);
   const shown = rows.slice((cur - 1) * size, cur * size);
+  const selectableIds = [...new Set(shown.filter((r) => r.product.is_active).map((r) => r.product.id))];
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   const reset = () => setPage(1);
   const th = (label: string, key: SortKey) => (
     <th className="py-3.5 px-3 font-bold whitespace-nowrap"><button onClick={() => setSort((s) => ({ k: key, asc: s.k === key ? !s.asc : true }))} className="inline-flex items-center gap-1">{label}<ArrowUpDown className="w-3 h-3 opacity-70" /></button></th>);
@@ -97,17 +100,34 @@ export function ProductsCanvas({ products, batches, branches, onEdit, onStock, e
         <button onClick={download} disabled={!rows.length} title="Download CSV" className={`${pillCls} inline-flex items-center gap-1.5 text-blue-700 border-blue-200 disabled:opacity-50`}><Download className="w-4 h-4" /> CSV</button>
       </div>
 
+      {editable && <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={!selected.size || busy}
+          onClick={() => {
+            const ids = [...selected];
+            if (!window.confirm(`Remove ${ids.length} selected product${ids.length === 1 ? '' : 's'} from the active catalogue? Sales and stock history will be preserved.`)) return;
+            void onBulkDelete(ids).then((success) => { if (success) setSelected(new Set()); });
+          }}
+          className="h-10 px-3 rounded-xl border border-rose-200 bg-white text-rose-700 text-sm font-bold inline-flex items-center gap-2 disabled:opacity-50"
+        >
+          <Trash2 className="w-4 h-4" /> Delete selected ({selected.size})
+        </button>
+        <span className="text-xs text-slate-500">Select active products on this page to remove them from the catalogue.</span>
+      </div>}
+
       <div className={`${cardCls} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm min-w-[1040px]">
-            <thead className="bg-blue-800 text-white"><tr><th className="py-3.5 px-4 font-bold">S/N</th>{th('Product Details', 'name')}{th('Quantity', 'quantity')}{th('Selling Unit', 'unit')}{th('Buying Price (TZS)', 'cost')}{th('Selling Price (TZS)', 'sell')}{th('Cost Markup', 'markup')}{th('Profit Margin', 'margin')}{th('Batch No', 'batch')}<th className="py-3.5 px-3 font-bold text-center">Actions</th></tr></thead>
+            <thead className="bg-blue-800 text-white"><tr>{editable && <th className="py-3.5 px-3"><input type="checkbox" aria-label="Select active products on this page" checked={allSelected} disabled={!selectableIds.length || busy} onChange={(e) => { const checked = e.currentTarget.checked; setSelected((current) => { const next = new Set(current); for (const id of selectableIds) { if (checked) next.add(id); else next.delete(id); } return next; }); }} /></th>}<th className="py-3.5 px-4 font-bold">S/N</th>{th('Product Details', 'name')}{th('Quantity', 'quantity')}{th('Selling Unit', 'unit')}{th('Buying Price (TZS)', 'cost')}{th('Selling Price (TZS)', 'sell')}{th('Cost Markup', 'markup')}{th('Profit Margin', 'margin')}{th('Batch No', 'batch')}<th className="py-3.5 px-3 font-bold text-center">Actions</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {shown.length === 0 ? <tr><td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">No products match these filters.</td></tr> : shown.map((r, i) => (
+              {shown.length === 0 ? <tr><td colSpan={editable ? 11 : 10} className="py-12 text-center text-slate-400 font-semibold">No products match these filters.</td></tr> : shown.map((r, i) => (
                 <tr key={r.key} className="hover:bg-slate-50/70">
+                  {editable && <td className="px-3"><input type="checkbox" aria-label={`Select product ${r.product.name}`} checked={selected.has(r.product.id)} disabled={!r.product.is_active || busy} onChange={(e) => { const checked = e.currentTarget.checked; setSelected((current) => { const next = new Set(current); if (checked) next.add(r.product.id); else next.delete(r.product.id); return next; }); }} /></td>}
                   <td className="py-3 px-4 text-slate-700">{(cur - 1) * size + i + 1}</td>
                   <td className="px-3 py-2.5"><div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${TONES[((cur - 1) * size + i) % TONES.length]}`}>{r.product.image_src ? <img src={r.product.image_src} alt={r.product.name} className="w-full h-full object-cover" loading="lazy" /> : <Pill className="w-4 h-4" />}</div>
-                    <div><div className="font-bold text-slate-900">{r.product.name}</div><div className="text-xs text-slate-500">{[r.product.generic_name, r.product.strength].filter(Boolean).join(' ') || 'Medicine'}</div></div></div></td>
+                    <div><div className="font-bold text-slate-900">{r.product.name} {!r.product.is_active && <span className="ml-1 text-[10px] font-bold text-slate-500">Inactive</span>}</div><div className="text-xs text-slate-500">{[r.product.generic_name, r.product.strength].filter(Boolean).join(' ') || 'Medicine'}</div></div></div></td>
                   <td className="px-3">{r.quantity <= 0 ? <span className="inline-block min-w-7 text-center rounded-md bg-rose-50 text-rose-600 font-bold px-2 py-0.5">0</span> : <span className="text-slate-800">{formatNumber(r.quantity)}</span>}</td>
                   <td className="px-3 text-slate-700">{r.product.dosage_form || '—'}</td>
                   <td className="px-3 text-slate-800">TZS {formatNumber(r.cost)}</td><td className="px-3 text-slate-800">TZS {formatNumber(r.sell)}</td>
@@ -121,6 +141,7 @@ export function ProductsCanvas({ products, batches, branches, onEdit, onStock, e
                       <button className="w-full text-left px-3 py-2 hover:bg-slate-50" onClick={() => { setViewing(r); setMenu(null); }}>View details</button>
                       {editable && <button className="w-full text-left px-3 py-2 hover:bg-slate-50" onClick={() => { onEdit(r.product); setMenu(null); }}>Edit product</button>}
                       {editable && <button className="w-full text-left px-3 py-2 hover:bg-slate-50" onClick={() => { onStock(r.product); setMenu(null); }}>Receive stock</button>}
+                      {editable && !r.product.is_active && <button className="w-full text-left px-3 py-2 hover:bg-slate-50 disabled:opacity-50" disabled={busy} onClick={() => { void onReactivate(r.product.id); setMenu(null); }}>Reactivate product</button>}
                       <button className="w-full text-left px-3 py-2 hover:bg-slate-50" onClick={() => { setViewing({ ...r }); setMenu(null); }}>Stock history</button>
                     </div>}
                   </div></td>

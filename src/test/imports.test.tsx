@@ -9,7 +9,7 @@ vi.mock('@/lib/import-suggestions.functions',()=>({suggestImportCategory:suggest
 vi.mock('@/lib/invoice-scan.functions',()=>({scanInvoice:vi.fn()}));
 
 const service=vi.hoisted(()=>({
- references:vi.fn(async()=>({category_name:[{value:'Analgesics',label:'Analgesics'}],supplier_name:[]})),
+ references:vi.fn(async()=>({category_name:[{value:'Analgesics',label:'Analgesics'}],supplier_name:[],branch_code:[{value:'MAIN',label:'Main (MAIN)'}]})),
  list:vi.fn(async()=>[]),history:vi.fn(async()=>[]),
  import:vi.fn(async()=>({status:'completed',successful_count:2,failed_count:0})),
 }));
@@ -23,6 +23,7 @@ describe('import category resolution',()=>{
   const file=new File([''],'products.csv',{type:'text/csv'});
   Object.defineProperty(file,'text',{value:async()=> 'name,sku,unit_of_measurement,selling_price,category_name\nParacetamol,PCM500,tablet,100,Pain Relief'});
   fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.change(screen.getByLabelText('Upload product photos'),{target:{files:[new File(['photo'],'PCM500.jpg',{type:'image/jpeg'})]}});
   fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
   fireEvent.click(await screen.findByRole('button',{name:'Suggest category'}));
   fireEvent.change(screen.getByLabelText('Unmatched row details'),{target:{value:'Paracetamol tablets for pain relief'}});
@@ -42,6 +43,7 @@ describe('import category resolution',()=>{
   const file=new File([''], 'products.csv',{type:'text/csv'});
   Object.defineProperty(file,'text',{value:async()=> 'name,sku,unit_of_measurement,selling_price,category_name\nParacetamol,PCM500,tablet,100,Pain Relief\nIbuprofen,IBU200,tablet,200,Pain Relief'});
   fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.change(screen.getByLabelText('Upload product photos'),{target:{files:[new File(['photo'],'PCM500.jpg',{type:'image/jpeg'}),new File(['photo'],'IBU200.jpg',{type:'image/jpeg'})]}});
   fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Import 2 records'})).toBeDisabled());
   fireEvent.change(await screen.findByLabelText('Resolve category_name Pain Relief'),{target:{value:'Analgesics'}});
@@ -52,6 +54,25 @@ describe('import category resolution',()=>{
   expect(service.import).toHaveBeenCalledWith('test-pharmacy','products',[
    expect.objectContaining({sku:'PCM500',category_name:'Analgesics'}),
    expect.objectContaining({sku:'IBU200',category_name:'Analgesics'}),
-  ],'products.csv');
+  ],'products.csv',expect.arrayContaining([expect.objectContaining({name:'PCM500.jpg'}),expect.objectContaining({name:'IBU200.jpg'})]));
+ });
+ it('maps legacy product exports and includes opening stock in the selected branch',async()=>{
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><ImportsTab ws={ws}/></QueryClientProvider>);
+  service.import.mockResolvedValueOnce({status:'completed',successful_count:1,failed_count:0});
+  const file=new File([''],'legacy-products.csv',{type:'text/csv'});
+  Object.defineProperty(file,'text',{value:async()=> 'ID,Brand Name,Generic Name,Dosage Form,Quantity,Selling Unit,Buying Price (TZS),Selling Price (TZS),Batch No,Expiry Month,Purchase Month\n428126,VIGOR DOCTOR,Medicine,Toothpaste,4,Pack,"TZS 1,500","TZS 3,000",V240,2029 - November,2026 - November'});
+  fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.change(screen.getByLabelText('Upload product photos'),{target:{files:[new File(['photo'],'428126.jpg',{type:'image/jpeg'})]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
+  expect(screen.getByLabelText('Opening stock branch')).toHaveValue('MAIN');
+  expect(screen.getByLabelText('Row 2 quantity')).toHaveValue('4');
+  expect(screen.getByLabelText('Row 2 expiry_date')).toHaveValue('2029-11-30');
+  fireEvent.click(await screen.findByRole('button',{name:'Import 1 records'}));
+  fireEvent.click(screen.getByRole('button',{name:'Confirm import'}));
+  await screen.findByText('1 records imported. No failed records.');
+  expect(service.import).toHaveBeenCalledWith('test-pharmacy','products',[
+   expect.objectContaining({sku:'428126',name:'VIGOR DOCTOR',quantity:'4',branch_code:'MAIN',batch_number:'V240',expiry_date:'2029-11-30',received_date:'2026-11-01',cost_price:'1500',cost_per_unit:'1500',selling_price:'3000'}),
+  ],'legacy-products.csv',expect.arrayContaining([expect.objectContaining({name:'428126.jpg'})]));
  });
 });

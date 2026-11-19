@@ -64,7 +64,30 @@ export function InventoryTab({ ws, userId, onImport }: { ws: Workspace; userId: 
       </div>}
 
       {isLoading ? <Empty>Loading…</Empty> : view === 'table' ? (
-        <ProductsCanvas products={products} batches={batches} branches={branches} editable={editable} onEdit={(p) => setEditing(p)} onStock={(p) => setReceiving(p.id)} />
+        <ProductsCanvas
+          products={products}
+          batches={batches}
+          branches={branches}
+          editable={editable}
+          busy={busy}
+          onEdit={(p) => setEditing(p)}
+          onStock={(p) => setReceiving(p.id)}
+          onReactivate={(id) => run(() => WorkspaceService.setProductsActive(pid, [id], true), 'Product reactivated')}
+          onBulkDelete={async (ids) => {
+            setBusy(true);
+            try {
+              await WorkspaceService.setProductsActive(pid, ids, false);
+              toast.success(`${ids.length} products removed from the active catalogue`);
+              refresh();
+              return true;
+            } catch (err) {
+              toast.error(errorText(err));
+              return false;
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
       ) : view === 'grid' ? (
         shown.length === 0 ? <Empty>No products yet.</Empty> : (
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -113,7 +136,7 @@ export function InventoryTab({ ws, userId, onImport }: { ws: Workspace; userId: 
         </div>
       )}
 
-      {editing && <EntryForm module="products" initial={editing.id ? entryProducts.find(p=>p.id===editing.id) : undefined} existing={entryProducts} references={refs} onClose={()=>setEditing(null)} onSave={async row=>{await EntryService.save(pid,'products',row,editing.id);refresh();void qc.invalidateQueries({queryKey:['entry',pid]});}} />}
+      {editing && <EntryForm module="products" initial={editing.id ? entryProducts.find(p=>p.id===editing.id) : undefined} imageSrc={editing.image_src ?? null} existing={entryProducts} references={refs} onClose={()=>setEditing(null)} onSave={async (row,photo)=>{await EntryService.save(pid,'products',row,editing.id,photo);refresh();void qc.invalidateQueries({queryKey:['entry',pid]});}} />}
       {receiving !== null && <EntryForm module="batches" references={refs} onClose={()=>setReceiving(null)} onSave={async row=>{await EntryService.save(pid,'batches',row);refresh();}} />}
 
     </div>
