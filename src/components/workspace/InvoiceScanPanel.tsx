@@ -10,7 +10,7 @@ import { inputCls } from './ws-ui';
 type Row = Record<string, string>;
 const key = (name: string, strength: string) => `${name} ${strength}`.toLowerCase().replace(/\s+/g, ' ').trim();
 
-/** Upload a supplier invoice → Covlo fills product rows (new items only) and the matching stock rows for a branch. */
+/** Upload a product/stock list or supplier invoice → Covlo extracts reviewable product and stock rows. */
 export function InvoiceScanPanel({ pharmacyId, existingProducts, branches, disabled, onProducts, onBatches }: {
   pharmacyId: string; existingProducts: Row[]; branches: { value: string; label: string }[]; disabled: boolean;
   onProducts: (rows: Row[], fileName: string) => void; onBatches: (rows: Row[], fileName: string) => void;
@@ -41,8 +41,8 @@ export function InvoiceScanPanel({ pharmacyId, existingProducts, branches, disab
   const p = plan();
   return <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h3 className="font-bold text-slate-900 flex items-center gap-2"><ScanLine className="w-4 h-4 text-blue-600" />Scan a supplier invoice</h3><p className="text-xs text-slate-600 max-w-xl">Upload a photo or PDF of the invoice or delivery note. Covlo reads medicine names, strengths, prices, quantities, batch and expiry, corrects spelling and picks categories. You review everything below before saving.</p></div>
-      <label className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold ${disabled || busy ? 'bg-slate-200 text-slate-500' : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700'}`}><UploadCloud className="w-4 h-4" />{busy ? 'Reading invoice…' : 'Upload invoice'}<input type="file" aria-label="Upload invoice" accept="image/jpeg,image/png,image/webp,application/pdf" disabled={disabled || busy} className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void read(f); }} /></label>
+      <div><h3 className="font-bold text-slate-900 flex items-center gap-2"><ScanLine className="w-4 h-4 text-blue-600" />Scan a product or stock list</h3><p className="text-xs text-slate-600 max-w-xl">Upload a photo or PDF of a product list, stock sheet, delivery note or invoice. Covlo extracts quantities and any visible batch/expiry details. Review every row before saving; unreadable or missing stock data is never guessed.</p></div>
+      <label className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold ${disabled || busy ? 'bg-slate-200 text-slate-500' : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700'}`}><UploadCloud className="w-4 h-4" />{busy ? 'Reading file…' : 'Upload photo or PDF'}<input type="file" aria-label="Upload product or stock list" accept="image/jpeg,image/png,image/webp,application/pdf" disabled={disabled || busy} className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void read(f); }} /></label>
     </div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {result && <div className="space-y-3">
@@ -54,7 +54,7 @@ export function InvoiceScanPanel({ pharmacyId, existingProducts, branches, disab
         <label className="text-xs">Receive stock into branch<select aria-label="Branch for invoice stock" className={inputCls} value={branch} onChange={(e) => setBranch(e.target.value)}>{branches.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}</select></label>
         <Button disabled={!branch || disabled} onClick={() => onBatches(linesToBatchRows(result.lines, p.skuRows, branch, new Date().toISOString().slice(0, 10)), fileName)}>Step 2 · Review stock & expiry</Button>
       </div>
-      <p className="text-[11px] text-slate-500">Import the new products first, then the stock. Selling prices are only filled when printed on the invoice — set your own in the preview.</p>
+      <p className="text-[11px] text-slate-500">Stock is added as new batches, not used to replace existing stock. Required batch or expiry details missing from the file must be completed in the preview. Import new products first; product images are required.</p>
     </div>}
   </div>;
 }

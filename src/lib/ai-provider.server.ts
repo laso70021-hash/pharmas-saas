@@ -24,7 +24,7 @@ export async function generateResponse(req: AIRequest): Promise<AIResult> {
   try {
     if (!key) throw new GatewayError('configuration');
     if (req.audit) {
-      const featureFlags: Record<string, string> = { prescription: 'prescription-analysis', invoice_scan: 'ocr-import', import_category: 'ocr-import', recommendations: 'expiry-prediction', email_report: 'sales-insights', covlo: 'sales-insights', admin_assistant: 'sales-insights' };
+      const featureFlags: Record<string, string> = { prescription: 'prescription-analysis', invoice_scan: 'ocr-import', import_category: 'ocr-import', import_mapping: 'ocr-import', recommendations: 'expiry-prediction', email_report: 'sales-insights', covlo: 'sales-insights', admin_assistant: 'sales-insights' };
       const slug = featureFlags[req.audit.feature];
       if (slug) {
         const { data, error } = await req.audit.supabase.from('ai_features').select('is_enabled').eq('slug', slug).maybeSingle();

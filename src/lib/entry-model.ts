@@ -22,16 +22,18 @@ export function blankEntry(module: EntryModule): EntryRow { return Object.fromEn
 const IMPORT_HEADER_ALIASES: Record<string, string[]> = {
  name: ['product name', 'brand name'],
  sku: ['product sku', 'product id', 'id', 'item code'],
+ product_sku: ['sku', 'product id', 'id', 'product code', 'drug code', 'medicine code', 'item code', 'code'],
  brand_name: ['brand name'],
  unit_of_measurement: ['selling unit', 'unit'],
  cost_price: ['buying price', 'buying price (tzs)', 'purchase price', 'purchase price (tzs)'],
  selling_price: ['selling price (tzs)', 'retail price'],
  min_stock_level: ['reorder level', 'minimum stock'],
- quantity: ['stock quantity', 'opening stock', 'qty'],
- batch_number: ['batch no', 'lot number', 'lot no'],
- expiry_date: ['expiry month', 'expiry', 'expiration date'],
+ quantity: ['stock quantity', 'opening stock', 'opening stock quantity', 'stock qty', 'qty', 'on hand', 'on hand quantity', 'stock on hand', 'available units', 'current stock', 'current balance', 'quantity in stock', 'balance', 'closing balance'],
+ branch_code: ['branch', 'branch name', 'location', 'outlet', 'store code'],
+ batch_number: ['batch no', 'batch number', 'lot number', 'lot no', 'lot', 'lot ref'],
+ expiry_date: ['expiry month', 'expiry', 'expiration date', 'best before', 'use by'],
  received_date: ['purchase month', 'purchase date', 'date received'],
- cost_per_unit: ['buying price', 'buying price (tzs)', 'purchase price', 'purchase price (tzs)'],
+ cost_per_unit: ['buying price', 'buying price (tzs)', 'buy price', 'purchase price', 'purchase price (tzs)', 'purchase cost', 'unit cost'],
 };
 const normalizeHeader = (value: string) => value.replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 export function defaultImportMapping(module: EntryModule, headers: string[]): Record<string, string> {

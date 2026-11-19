@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ENTRY_MODELS } from './entry-model';
 
 export const categorySuggestionInput=z.object({
  pharmacyId:z.string().uuid(),
@@ -25,4 +26,30 @@ export function checkedReferenceResolution(value:unknown,asked:{column:string;va
   const match=(existing[r.column]??[]).find(n=>n.toLowerCase()===r.name.trim().toLowerCase());
   return match?{...r,name:match,isNew:false}:{...r,name:r.name.trim(),isNew:true};
  });
+}
+export const importMappingInput=z.object({
+ pharmacyId:z.string().uuid(),
+ module:z.enum(['products','batches']),
+ headers:z.array(z.string().trim().min(1).max(200)).min(1).max(80),
+ sampleRows:z.array(z.array(z.string().max(160)).max(80)).max(3),
+});
+const importMappingOutput=z.object({mappings:z.array(z.object({
+ field:z.string().max(80),header:z.string().nullable(),reason:z.string().max(240),
+})).max(40)});
+export function checkedImportMapping(value:unknown,module:'products'|'batches',headers:string[]){
+ const parsed=importMappingOutput.parse(value);
+ const allowed=new Set(ENTRY_MODELS[module].fields.filter(f=>f.importable!==false).map(f=>f.key));
+ const available=new Set(headers);
+ const seen=new Set<string>();
+ const mapping:Record<string,string>={};
+ const reasons:{field:string;header:string;reason:string}[]=[];
+ for(const item of parsed.mappings){
+  if(!allowed.has(item.field)||seen.has(item.field))throw new Error('Covlo returned an invalid field mapping.');
+  seen.add(item.field);
+  if(item.header===null)continue;
+  if(!available.has(item.header))throw new Error('Covlo returned a column that is not in this file.');
+  mapping[item.field]=item.header;
+  reasons.push({field:item.field,header:item.header,reason:item.reason});
+ }
+ return {mapping,reasons};
 }

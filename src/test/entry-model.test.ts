@@ -38,6 +38,11 @@ describe('real-world entry validation',()=>{
   expect(normalizeImportValue(expiry,'2029 - November')).toBe('2029-11-30');
   expect(normalizeImportValue(purchase,'2026 - November')).toBe('2026-11-01');
  });
+ it('maps common stock-list headers to existing-product batch fields',()=>{
+  expect(defaultImportMapping('batches',['Drug Code','Current Balance','Outlet','Lot Ref','Use By','Buy Price'])).toMatchObject({
+   product_sku:'Drug Code',quantity:'Current Balance',branch_code:'Outlet',batch_number:'Lot Ref',expiry_date:'Use By',cost_per_unit:'Buy Price',
+  });
+ });
  it('requires batch details and a valid branch for imported opening stock',()=>{
   const refs={branch_code:[{value:'MAIN',label:'Main'}]};
   expect(validateEntries('products',[{...product,quantity:'4',batch_number:'B1',expiry_date:'2028-01-01',branch_code:'OTHER'}],[],refs)).toEqual(expect.arrayContaining([expect.objectContaining({column:'branch_code',reason:'Unknown or ambiguous reference: OTHER'})]));

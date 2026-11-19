@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ImportsTab } from '@/components/workspace/ImportsTab';
 import type { Workspace } from '@/lib/pharmacy-types';
 const suggest=vi.hoisted(()=>vi.fn(async()=>({category:{id:'category-1',name:'Analgesics'},reason:'Matches pain relief products.',error:null})));
+const mapColumns=vi.hoisted(()=>vi.fn(async()=>({mapping:{} as Record<string,string>,reasons:[] as {field:string;header:string;reason:string}[],error:null as string|null})));
 vi.mock('@tanstack/react-start',()=>({useServerFn:(fn:unknown)=>fn}));
-vi.mock('@/lib/import-suggestions.functions',()=>({suggestImportCategory:suggest,resolveImportReferences:vi.fn()}));
+vi.mock('@/lib/import-suggestions.functions',()=>({suggestImportCategory:suggest,suggestImportMapping:mapColumns,resolveImportReferences:vi.fn()}));
 vi.mock('@/lib/invoice-scan.functions',()=>({scanInvoice:vi.fn()}));
 
 const service=vi.hoisted(()=>({
@@ -34,6 +35,7 @@ describe('import category resolution',()=>{
   expect(screen.getByRole('button',{name:'Import 1 records'})).toBeDisabled();
   fireEvent.click(screen.getByRole('button',{name:'Apply to 1 matching rows'}));
   expect(screen.getByLabelText('Row 2 category_name')).toHaveValue('Analgesics');
+  fireEvent.click(screen.getByLabelText('I understand these products will be imported with zero stock.'));
   expect(screen.getByRole('button',{name:'Import 1 records'})).toBeEnabled();
   expect(service.import).not.toHaveBeenCalled();
  });
@@ -47,6 +49,8 @@ describe('import category resolution',()=>{
   fireEvent.click(await screen.findByRole('button',{name:'Preview and validate'}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Import 2 records'})).toBeDisabled());
   fireEvent.change(await screen.findByLabelText('Resolve category_name Pain Relief'),{target:{value:'Analgesics'}});
+  expect(screen.getByRole('button',{name:'Import 2 records'})).toBeDisabled();
+  fireEvent.click(screen.getByLabelText('I understand these products will be imported with zero stock.'));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Import 2 records'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Import 2 records'}));
   fireEvent.click(screen.getByRole('button',{name:'Confirm import'}));
@@ -74,5 +78,26 @@ describe('import category resolution',()=>{
   expect(service.import).toHaveBeenCalledWith('test-pharmacy','products',[
    expect.objectContaining({sku:'428126',name:'VIGOR DOCTOR',quantity:'4',branch_code:'MAIN',batch_number:'V240',expiry_date:'2029-11-30',received_date:'2026-11-01',cost_price:'1500',cost_per_unit:'1500',selling_price:'3000'}),
   ],'legacy-products.csv',expect.arrayContaining([expect.objectContaining({name:'428126.jpg'})]));
+ });
+ it('uses Covlo mappings to turn an existing product file into a stock-only import',async()=>{
+  service.list.mockResolvedValueOnce([{id:'existing-1',sku:'P-101',name:'Medicine',strength:'500mg'}] as never);
+  mapColumns.mockResolvedValueOnce({mapping:{sku:'Drug Code',quantity:'Current Balance',batch_number:'Lot Ref',expiry_date:'Use By',cost_price:'Buy Cost'},reasons:[{field:'quantity',header:'Current Balance',reason:'Current stock balance'}],error:null});
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><ImportsTab ws={ws}/></QueryClientProvider>);
+  const file=new File([''],'stock-list.csv',{type:'text/csv'});
+  Object.defineProperty(file,'text',{value:async()=> 'Drug Code,Current Balance,Lot Ref,Use By,Buy Cost\nP-101,15,B-12,2027-12-31,75\nP-999,8,B-13,2028-12-31,60'});
+  fireEvent.change(screen.getByLabelText('Upload import file'),{target:{files:[file]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Ask Covlo to map these columns'}));
+  await waitFor(()=>expect(screen.getByText('Covlo suggested 5 column mappings. Review them and preview the rows before importing.')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button',{name:'Preview and validate'}));
+  expect(await screen.findByText(/1 row\(s\) have positive quantities and SKUs already in your catalogue/)).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button',{name:'Use this file to add stock to existing products'}));
+  expect(screen.getByLabelText('Import module')).toHaveValue('batches');
+  expect(await screen.findByLabelText('Row 2 product_sku')).toHaveValue('P-101');
+  expect(screen.getByLabelText('Row 2 quantity')).toHaveValue('15');
+  expect(screen.getByLabelText('Row 2 branch_code')).toHaveValue('MAIN');
+  expect(screen.getByLabelText('Row 2 batch_number')).toHaveValue('B-12');
+  expect(screen.getByLabelText('Row 2 expiry_date')).toHaveValue('2027-12-31');
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Import 1 records'})).toBeEnabled());
  });
 });
